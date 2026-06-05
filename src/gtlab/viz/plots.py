@@ -22,16 +22,39 @@ def new_axes(figsize=(6.0, 4.0)):
     return fig, ax
 
 
-def ref_lines(ax, hlines=None, vlines=None) -> None:
-    """Draw optional dotted reference lines at the given y / x values.
+def _ref_value_label(item):
+    """Unpack a reference-line spec into ``(value, label)``.
 
-    Used by the parameter-sweep plots so callers can mark a probability level
-    or a parameter of interest (matches the notebook ``hlines``/``vlines`` API).
+    Accepts a bare number, or a ``(value, label)`` / ``(value,)`` tuple/list.
     """
-    for y in (hlines or []):
-        ax.axhline(float(y), ls=":", lw=1.0, color=C["muted"], alpha=0.8, zorder=1)
-    for x in (vlines or []):
-        ax.axvline(float(x), ls=":", lw=1.0, color=C["muted"], alpha=0.8, zorder=1)
+    if isinstance(item, (tuple, list)):
+        value = float(item[0])
+        label = str(item[1]) if len(item) > 1 and item[1] is not None else None
+        return value, label
+    return float(item), None
+
+
+def ref_lines(ax, hlines=None, vlines=None) -> None:
+    """Draw optional dotted reference lines at the given y / x positions.
+
+    Each entry is either a number or a ``(value, label)`` tuple (matching the
+    notebook ``hlines``/``vlines`` API); when a label is given it is annotated
+    next to the line.
+    """
+    style = dict(ls=":", lw=1.0, color=C["muted"], alpha=0.8, zorder=1)
+    for item in (hlines or []):
+        y, label = _ref_value_label(item)
+        ax.axhline(y, **style)
+        if label:
+            ax.annotate(label, xy=(0.01, y), xycoords=("axes fraction", "data"),
+                        va="bottom", ha="left", fontsize=8, color=C["muted"])
+    for item in (vlines or []):
+        x, label = _ref_value_label(item)
+        ax.axvline(x, **style)
+        if label:
+            ax.annotate(label, xy=(x, 0.99), xycoords=("data", "axes fraction"),
+                        va="top", ha="left", fontsize=8, color=C["muted"],
+                        rotation=90)
 
 
 def br_heatmap(

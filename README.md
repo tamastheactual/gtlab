@@ -1,5 +1,10 @@
 # gtlab — Game Theory Lab
 
+[![CI](https://github.com/tamastheactual/gtlab/actions/workflows/ci.yml/badge.svg)](https://github.com/tamastheactual/gtlab/actions/workflows/ci.yml)
+[![PyPI](https://img.shields.io/pypi/v/gtlab.svg)](https://pypi.org/project/gtlab/)
+[![Python](https://img.shields.io/pypi/pyversions/gtlab.svg)](https://pypi.org/project/gtlab/)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+
 A teaching toolkit for the ELTE Game Theory course. It consolidates the solvers,
 example games, and Jupyter visualizations that previously lived (duplicated) in
 six separate Colab notebooks into one installable, extensible package.
@@ -42,7 +47,7 @@ g.explain()
 The design separates the three concerns that were tangled together in the
 notebooks:
 
-```
+```text
 gtlab/
 ├── core/      game classes — hold data, expose a thin API
 │   ├── normal_form.py      NormalFormGame
@@ -89,6 +94,7 @@ Each lecture notebook drops its ~2,000-line engine class and imports from
 `gtlab` instead, keeping only narrative and example-specific calls. The methods
 the notebooks relied on (`.summary()`, `.solve()`, `.explain()`, `.plot_*()`)
 are preserved on the core classes.
+
 ```python
 # old: 1,800 lines of NormalFormGame defined inline
 # new:

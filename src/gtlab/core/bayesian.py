@@ -192,15 +192,19 @@ class PostedPrice(Mechanism):
         with rc_context():
             import matplotlib.pyplot as plt
             fig, ax = plt.subplots(figsize=figsize)
-            ax.plot(grid, R, color=C["p1"], lw=2.2, label="E[R | p]")
-            ax.fill_between(grid, R, alpha=0.08, color=C["p1"], linewidth=0)
+            ax.step(grid, R, where="post", color=C["p1"], lw=2.2,
+                    label="E[R | p]")
+            ax.fill_between(grid, R, step="post", alpha=0.08, color=C["p1"],
+                            linewidth=0)
             ax.scatter(cand, cand_R, color=C["ne"], zorder=5, s=44,
                        edgecolor="white", linewidths=0.8)
             ax.set_ylim(0, R_max * 1.25)
             ax.axvline(p_star, ls=":", lw=1.1, color=C["ne"], alpha=0.7)
-            ax.text(0.5, 0.96, f"optimal: p* = {fmt_money(p_star)}",
-                    transform=ax.transAxes, ha="center", va="top",
-                    color=C["ne"], fontweight="bold")
+            ax.annotate(f"optimal: p* = {fmt_money(p_star)}",
+                        xy=(p_star, R_max * 1.2), xycoords="data",
+                        xytext=(4, 0), textcoords="offset points",
+                        ha="left", va="top", clip_on=True,
+                        color=C["ne"], fontweight="bold")
             ax.set_xlabel("Posted price p")
             ax.set_ylabel("Expected revenue E[R | p]")
             ax.set_title(title or f"{self.name}: seller's expected revenue")
@@ -687,7 +691,9 @@ class VCGAssignment(Mechanism):
             ax.bar(x + 0.175, pays, 0.35, color=C["p2"], label="VCG payment")
             ax.set_ylim(0, y_max * 1.22)
             for i in range(len(self.bidders)):
-                ax.text(i, max(values_won[i], pays[i]) + y_max * 0.04,
+                bar_top = max(values_won[i], pays[i])
+                y_lbl = (bar_top if bar_top > 0 else 0.0) + y_max * 0.04
+                ax.text(i, y_lbl,
                         f"u = {fmt(values_won[i] - pays[i])}", ha="center",
                         va="bottom", color=C["ne"], fontweight="bold")
             ax.set_xticks(x)

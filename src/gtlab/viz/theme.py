@@ -9,30 +9,39 @@ from __future__ import annotations
 from contextlib import contextmanager
 
 # ── Color palette ────────────────────────────────────────────────────────
+# Based on the seaborn "deep" palette: a restrained, mid-tone, colorblind-
+# friendly scheme that reads on both light and dark notebook backgrounds.
 # Shared across HTML tables and matplotlib plots so the two always agree.
 C = {
-    "p1": "#2563eb",       # Row / player 1
-    "p2": "#dc2626",       # Column / player 2
-    "p1_light": "#dbeafe",
-    "p2_light": "#fee2e2",
-    "ne": "#16a34a",       # Nash equilibrium highlight
-    "ce": "#9333ea",       # Correlated equilibrium
-    "cce": "#f59e0b",      # Coarse correlated equilibrium
-    "chance": "#f97316",   # chance nodes (extensive form)
-    "terminal": "#16a34a",
-    "pareto": "#eab308",
-    "grid": "#94a3b8",
-    "cell": "#f8fafc",
-    "cell_alt": "#eef2f7",
-    "text": "#0f172a",
-    "muted": "#64748b",
-    "accent": "#0ea5e9",
+    "p1": "#4c72b0",       # Row / player 1   (deep blue)
+    "p2": "#c44e52",       # Column / player 2 (muted red)
+    # 8-digit hex (#RRGGBBAA) so the tints are valid in BOTH matplotlib and CSS.
+    "p1_light": "#4c72b029",
+    "p2_light": "#c44e5229",
+    "ne": "#55a868",       # Nash equilibrium  (muted green)
+    "ce": "#8172b3",       # Correlated equilibrium (muted violet)
+    "cce": "#dd8452",      # Coarse correlated equilibrium (muted orange)
+    "chance": "#dd8452",   # chance nodes (extensive form)
+    "terminal": "#55a868",
+    "terminal_light": "#55a86829",  # terminal-node fill (extensive form)
+    "pareto": "#c9a227",   # Pareto star (muted gold, not neon yellow)
+    "grid": "#8c8c8c",
+    "cell": "#8080800f",
+    "cell_alt": "#8080801f",
+    "text": "#1f2937",     # plot annotations (figures render on white)
+    "muted": "#94a3b8",
+    "accent": "#64b5cd",   # muted cyan
 }
+
+# Ordered cycle for multi-series plots (seaborn "deep").
+CYCLE = ["#4c72b0", "#dd8452", "#55a868", "#c44e52", "#8172b3",
+         "#937860", "#da8bc3", "#8c8c8c", "#ccb974", "#64b5cd"]
 
 # matplotlib rcParams shared by every plot helper.
 RC_PARAMS = {
-    "figure.dpi": 110,
-    "savefig.dpi": 110,
+    "figure.dpi": 120,
+    "savefig.dpi": 120,
+    "savefig.bbox": "tight",
     "font.size": 11,
     "axes.titlesize": 12,
     "axes.titleweight": "bold",
@@ -41,9 +50,21 @@ RC_PARAMS = {
     "axes.spines.right": False,
     "axes.grid": True,
     "grid.alpha": 0.25,
+    "grid.color": "#8c8c8c",
     "legend.frameon": False,
     "figure.autolayout": True,
 }
+
+
+def _rc_with_cycle(extra: dict | None = None) -> dict:
+    """RC_PARAMS plus the professional color cycle (cycler imported lazily)."""
+    from cycler import cycler
+
+    params = dict(RC_PARAMS)
+    params["axes.prop_cycle"] = cycler(color=CYCLE)
+    if extra:
+        params.update(extra)
+    return params
 
 # ── CSS ──────────────────────────────────────────────────────────────────
 # One stylesheet for all HTML output. It is THEME-AGNOSTIC: instead of picking
@@ -67,11 +88,11 @@ CSS = """
 .gt-title { font-weight: 700; font-size: 1.05em; margin-bottom: 6px; }
 .gt-muted { opacity: 0.7; font-size: 0.9em; }
 .gt-br { text-decoration: underline; text-decoration-thickness: 2px; }
-.gt-ne { outline: 2px solid #16a34a; outline-offset: -2px; }
-.gt-pareto::after { content: " \\2605"; color: #eab308; }
-.gt-dom { text-decoration: line-through; opacity: 0.55; }
-.gt-row { color: #3b82f6; }
-.gt-col { color: #ef4444; }
+.gt-ne { outline: 2px solid #55a868; outline-offset: -2px; }
+.gt-pareto::after { content: " \\2605"; color: #c9a227; }
+.gt-dom { text-decoration: line-through; opacity: 0.7; }
+.gt-row { color: #4c72b0; }
+.gt-col { color: #c44e52; }
 .gt-flex { display: flex; flex-wrap: wrap; gap: 16px; align-items: flex-start; }
 .gt-steps { margin: 6px 0 4px 0; padding-left: 1.3em; }
 .gt-steps li { margin: 4px 0; line-height: 1.45; }
@@ -83,9 +104,7 @@ def apply_rc(rc: dict | None = None) -> None:
     """Apply the shared matplotlib style globally (call once per notebook)."""
     import matplotlib.pyplot as plt
 
-    plt.rcParams.update(RC_PARAMS)
-    if rc:
-        plt.rcParams.update(rc)
+    plt.rcParams.update(_rc_with_cycle(rc))
 
 
 @contextmanager
@@ -93,8 +112,5 @@ def rc_context(rc: dict | None = None):
     """Scoped matplotlib styling - preferred over mutating global rcParams."""
     import matplotlib.pyplot as plt
 
-    params = dict(RC_PARAMS)
-    if rc:
-        params.update(rc)
-    with plt.rc_context(params):
+    with plt.rc_context(_rc_with_cycle(rc)):
         yield

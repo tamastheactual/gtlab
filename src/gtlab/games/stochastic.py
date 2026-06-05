@@ -13,20 +13,29 @@ def security_game(gamma: float = 0.8, escalate: float = 0.7,
                   recover: float = 0.6) -> StochasticGame:
     """Two-state zero-sum security game.
 
-    ``escalate`` : P(Secure -> Vulnerable | Patch, Probe) at Secure.
-    ``recover``  : P(Vulnerable -> Secure | Patch, *)     at Vulnerable.
+    ``escalate`` : P(Secure -> Vulnerable) when the attacker Probes.
+    ``recover``  : P(Vulnerable -> Secure) when the defender Patches.
+
+    Designed so the equilibrium is genuinely mixed at Secure (a matching-pennies
+    style monitor/probe interaction) and the induced Markov chain visits BOTH
+    states: the attacker probes with positive probability (escalating), while at
+    Vulnerable the defender patches and recovers. This keeps simulated
+    trajectories dynamic rather than absorbing.
     """
+    # Row = defender payoff (zero-sum). Secure: mixed (no saddle); Vulnerable:
+    # patching dominates monitoring so the defender works to recover.
     r = np.array([
-        [[0, 1], [-1, 0]],     # Secure
-        [[-5, -3], [-2, -1]],  # Vulnerable
+        [[2, -1], [-1, 1]],    # Secure:     Monitor/Patch x Probe/Wait
+        [[-3, -3], [-1, -1]],  # Vulnerable: patching limits the damage
     ], dtype=float)
+    # Transitions to [Secure, Vulnerable].
     P = np.array([
-        # Secure: actions [Monitor, Patch] x [Probe, Wait]
-        [[[1.0, 0.0], [1.0, 0.0]],
-         [[1 - escalate, escalate], [1.0, 0.0]]],
-        # Vulnerable
-        [[[0.0, 1.0], [0.0, 1.0]],
-         [[recover, 1 - recover], [recover, 1 - recover]]],
+        # Secure: probing escalates (attacker-driven), waiting stays secure.
+        [[[1 - escalate, escalate], [1.0, 0.0]],   # Monitor x [Probe, Wait]
+         [[1 - escalate, escalate], [1.0, 0.0]]],  # Patch   x [Probe, Wait]
+        # Vulnerable: patching recovers (defender-driven), monitoring stays.
+        [[[0.0, 1.0], [0.0, 1.0]],                 # Monitor x [Probe, Wait]
+         [[recover, 1 - recover], [recover, 1 - recover]]],  # Patch
     ], dtype=float)
     return StochasticGame(r, P, gamma=gamma,
                           state_names=["Secure", "Vulnerable"],

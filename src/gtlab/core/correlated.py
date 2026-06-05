@@ -235,23 +235,32 @@ class CorrelatedGame:
             if len(ce_pts):
                 ax.scatter(ce_pts[:, 0], ce_pts[:, 1], s=10, alpha=0.30,
                            color=C["ce"], label="CE payoffs", zorder=2)
-            # Pure-strategy outcomes.
+            # Pure-strategy outcomes (group cells that share the same payoff point
+            # so coincident labels are joined instead of overlapping).
+            cell_groups: dict = {}
             for i in range(m):
                 for j in range(n):
-                    ax.scatter(self.A[i, j], self.B[i, j], s=40, color=C["muted"],
-                               marker="s", alpha=0.8, zorder=3)
-                    ax.annotate(f"({self.row_actions[i]},{self.col_actions[j]})",
-                                (self.A[i, j], self.B[i, j]),
-                                textcoords="offset points", xytext=(5, 5),
-                                fontsize=7.5, color=C["text"])
+                    key = (self.A[i, j], self.B[i, j])
+                    cell_groups.setdefault(key, []).append(
+                        f"({self.row_actions[i]},{self.col_actions[j]})")
+            for (ax_val, bx_val), labels in cell_groups.items():
+                ax.scatter(ax_val, bx_val, s=40, color=C["muted"],
+                           marker="s", alpha=0.8, zorder=3)
+                ax.annotate("/".join(labels), (ax_val, bx_val),
+                            textcoords="offset points", xytext=(5, 5),
+                            fontsize=7.5, color=C["text"])
             # Nash equilibria.
             for k, (eu_r, eu_c) in enumerate(self._nash_payoffs()):
                 ax.scatter(eu_r, eu_c, s=140, color=C["ne"], marker="*",
                            zorder=5, label="NE" if k == 0 else None)
             ax.set_xlabel(f"{self.row_name} payoff")
             ax.set_ylabel(f"{self.col_name} payoff")
-            ax.set_title(title or f"{self.name} - payoff region (NE subset CE subset CCE)")
-            ax.legend()
+            ax.set_title(title or f"{self.name} - payoff region")
+            ax.margins(0.15)
+            # The NE in CE in CCE relation lives in the (outside) legend title so
+            # it never collides with the plot title or data points.
+            ax.legend(loc="upper left", bbox_to_anchor=(1.02, 1.0),
+                      title="NE ⊆ CE ⊆ CCE")
         return fig, ax
 
     @staticmethod

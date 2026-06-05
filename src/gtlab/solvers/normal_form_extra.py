@@ -82,8 +82,9 @@ def envelope_crossings(lines, p_grid):
                 ps = p[idx] - d0 * (p[idx + 1] - p[idx]) / (d1 - d0)
                 us = lines[i][idx] + (lines[i][idx + 1] - lines[i][idx]) * \
                     ((ps - p[idx]) / (p[idx + 1] - p[idx]) if p[idx + 1] != p[idx] else 0)
-                all_vals = [float(line[idx]) for line in lines]
-                if us >= max(all_vals) - 1e-6:
+                vals_at_ps = [float(np.interp(ps, p, line)) for line in lines]
+                grid_tol = (p[-1] - p[0]) / max(len(p) - 1, 1)
+                if us >= max(vals_at_ps) - grid_tol:
                     key = (round(float(ps), 6), round(float(us), 6))
                     if key not in seen:
                         seen.add(key)

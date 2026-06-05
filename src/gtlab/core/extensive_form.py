@@ -596,7 +596,7 @@ class ExtensiveFormGame:
             for node, (x, y) in pos.items():
                 data = self.tree[node]
                 if data.get("is_terminal", False):
-                    fc, ec = C["p1_light"], C["terminal"]
+                    fc, ec = C["terminal_light"], C["terminal"]
                 elif data.get("player") == "chance":
                     fc, ec = "#fde7c8", C["chance"]
                 elif data.get("player") == 0:
@@ -680,7 +680,9 @@ class ExtensiveFormGame:
         br_row, br_col = solvers.br_masks(A, B)
         return plots.br_heatmap(br_row, br_col, solvers.ne_mask(A, B),
                                 nf["row_labels"], nf["col_labels"],
-                                title=title or f"{self.name} - best responses")
+                                title=title or f"{self.name} - best responses",
+                                row_player=self.players[0],
+                                col_player=self.players[1])
 
     def plot_mixed(self, title: Optional[str] = None, figsize=(6.0, 4.0)):
         """2x2 induced game: expected-payoff indifference lines."""

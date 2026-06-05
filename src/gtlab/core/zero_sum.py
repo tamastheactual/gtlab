@@ -164,7 +164,7 @@ class ZeroSumGame:
         body = self._solution_html() + html.steps(items)
         html.show(html.card(title or f"{self.name} - explanation", body))
 
-    def plot_convergence(self, T: int = 500, seed: int = 0, title: Optional[str] = None):
+    def plot_convergence(self, T: int = 2000, seed: int = 0, title: Optional[str] = None):
         """Show empirical average payoff under repeated optimal play converging to v."""
         s = self.solve_value()
         rng = np.random.default_rng(seed)
@@ -177,7 +177,8 @@ class ZeroSumGame:
         cesaro = np.cumsum(rewards) / np.arange(1, T + 1)
         return plots.convergence({"Cesàro average": cesaro}, target=s["value"],
                                  title=title or f"{self.name} - convergence to value",
-                                 ylabel="average payoff")
+                                 ylabel="average payoff",
+                                 target_label=f"v = {fmt(s['value'])}")
 
     # ── detailed walkthroughs ─────────────────────────────────────────────────
     def lp_detail(self, title: Optional[str] = None) -> None:
@@ -420,7 +421,7 @@ class ZeroSumGame:
             ax = axes[1]
             for j in range(2):
                 pay = -(self.A[0, j] * grid + self.A[1, j] * (1 - grid))
-                ax.plot(grid, pay, color=C["accent"] if j == 0 else C["chance"],
+                ax.plot(grid, pay, color=C["p1"] if j == 0 else C["p2"],
                         label=self.col_actions[j])
             ax.axhline(-v, ls="--", color=C["ne"], label=f"-v = {fmt(-v)}")
             ax.axvline(p[0], ls=":", color=C["ne"], alpha=0.6)
@@ -447,7 +448,7 @@ class ZeroSumGame:
              + (1 - P) * (self.A[1, 0] * Q + self.A[1, 1] * (1 - Q)))
         with rc_context():
             fig, ax = plt.subplots(figsize=(6, 5))
-            cf = ax.contourf(Q, P, Z, levels=20, cmap="RdYlGn")
+            cf = ax.contourf(Q, P, Z, levels=20, cmap="RdBu_r")
             ax.contour(Q, P, Z, levels=20, colors="k", linewidths=0.3, alpha=0.4)
             fig.colorbar(cf, ax=ax, label="p^T A q")
             ax.plot(q[0], p[0], "*", color="white", markersize=15,
@@ -482,7 +483,7 @@ class ZeroSumGame:
             ax.set_xlabel(f"p = Pr[{self.row_actions[0]}]")
             ax.set_ylabel("Guaranteed payoff")
             ax.set_title("Row's maximin (security level)")
-            ax.legend()
+            ax.legend(loc="lower center")
 
             ax = axes[1]
             ax.plot(rng, minimax, color=C["p2"], label="max_p p^T A q")
@@ -492,7 +493,7 @@ class ZeroSumGame:
             ax.set_xlabel(f"q = Pr[{self.col_actions[0]}]")
             ax.set_ylabel("Worst-case payoff to Row")
             ax.set_title("Column's minimax (holding Row down)")
-            ax.legend()
+            ax.legend(loc="upper center")
             fig.suptitle(title or f"{self.name} - security levels", fontweight="bold")
         return fig, axes
 

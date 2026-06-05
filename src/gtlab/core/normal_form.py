@@ -299,7 +299,9 @@ class NormalFormGame:
         br_row, br_col = self.best_responses()
         return plots.br_heatmap(br_row, br_col, solvers.ne_mask(self.A, self.B),
                                 self.row_actions, self.col_actions,
-                                title=title or f"{self.name} - best responses")
+                                title=title or f"{self.name} - best responses",
+                                row_player=getattr(self, "row_name", "Row"),
+                                col_player=getattr(self, "col_name", "Column"))
 
     # ── mixed-strategy indifference plot ─────────────────────────────────────
     def plot_mixed(self, title: Optional[str] = None, figsize=(10.0, 4.0)):
@@ -487,9 +489,14 @@ class NormalFormGame:
 
         with rc_context():
             fig, ax = plt.subplots(figsize=figsize)
+            ls_cycle = ["-", "--", ":", "-."]
             for k, p in enumerate(active):
                 name = f"({g0.row_actions[p[0]]}, {g0.col_actions[p[1]]})"
-                ax.step(prange, is_ne[p], where="mid", lw=2.2,
+                # Fan out coincident indicators (all at y=1) so each legend
+                # entry maps to a visible line instead of being over-painted.
+                ys = np.asarray(is_ne[p], dtype=float) * (1 - 0.04 * k)
+                ax.step(prange, ys, where="mid", lw=2.2,
+                        ls=ls_cycle[k % len(ls_cycle)], alpha=0.95 - 0.08 * k,
                         color=colors[k % len(colors)], label=f"{name} is NE")
             ax.step(prange, n_eq, where="mid", lw=2.0, ls="--",
                     color=C["muted"], label="# pure NE")

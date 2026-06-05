@@ -17,7 +17,7 @@ from ..viz import (C, fmt, fmt_prob, fmt_prob_vec, fmt_vec, html, plots,
 from ..solvers.stochastic_extra import best_response_iteration, pure_values
 
 # Per-state color palette built from the shared theme (no private CSS).
-_STATE_COLORS = [C["ce"], C["accent"], C["chance"], C["p2"], C["ne"], C["p1"]]
+_STATE_COLORS = [C["p1"], C["p2"], C["ne"], C["accent"], C["ce"], C["cce"]]
 
 
 def _state_color(s: int) -> str:
@@ -380,13 +380,18 @@ class StochasticGame:
             ax2 = axes[1]
             for k in range(min(K, 6)):
                 ax2.plot(cesaro[k], alpha=0.2, color=C["muted"], linewidth=0.8)
-            ax2.plot(cem, color=C["ne"], linewidth=2, label=f"Mean Cesaro (K={K})")
-            ax2.fill_between(range(T), cem - ces, cem + ces, alpha=0.2, color=C["ne"])
             ref = (1 - self.gamma) * V_star[s0]
             ax2.axhline(ref, color=C["p2"], linestyle="--", linewidth=1.5,
-                        label=f"(1-gamma) V*(s0) = {fmt(ref)}")
+                        zorder=1, label=f"(1-gamma) V*(s0) = {fmt(ref)}")
+            ax2.fill_between(range(T), cem - ces, cem + ces, alpha=0.2, color=C["ne"])
+            ax2.plot(cem, color=C["ne"], linewidth=2, zorder=3,
+                     label=f"Mean Cesàro (K={K})")
+            lo = min(float((cem - ces).min()), ref)
+            hi = max(float((cem + ces).max()), ref)
+            pad = max(0.05, 0.1 * (hi - lo))
+            ax2.set_ylim(lo - pad, hi + pad)
             ax2.set_xlabel("Time step t")
-            ax2.set_ylabel("Cesaro avg reward")
+            ax2.set_ylabel("Cesàro avg reward")
             ax2.set_title(f"Empirical avg reward (K={K})")
             ax2.legend()
             ax3 = axes[2]
@@ -414,7 +419,7 @@ class StochasticGame:
             fig, axes = plt.subplots(1, self.nS, figsize=(4.5 * self.nS, 4.4),
                                      squeeze=False)
             for s, ax in enumerate(axes[0]):
-                im = ax.imshow(Q[s], cmap="RdYlBu_r", vmin=vmin, vmax=vmax,
+                im = ax.imshow(Q[s], cmap="coolwarm", vmin=vmin, vmax=vmax,
                                aspect="auto")
                 ax.set_xticks(range(self.nB))
                 ax.set_xticklabels(self.col_actions)

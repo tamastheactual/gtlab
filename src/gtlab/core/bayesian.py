@@ -13,7 +13,7 @@ from typing import Any, Callable, Dict, List, Optional, Sequence, Tuple
 
 import numpy as np
 
-from ..viz import C, fmt, fmt_money, fmt_prob, html, rc_context
+from ..viz import C, fmt, fmt_money, fmt_prob, html, plots, rc_context
 from ..solvers.bayesian_extra import (
     auction_expected_revenue,
     entry_expected_payoff,
@@ -40,6 +40,22 @@ def _df(columns: Dict[str, Any]):
         return pd.DataFrame(columns)
     except Exception:  # pragma: no cover - pandas always present in practice
         return columns
+
+
+def _resolve_rng(rng, seed):
+    """Coerce ``rng`` into a numpy Generator.
+
+    ``rng=None`` -> ``default_rng(seed)``; an ``int`` is treated as a seed; an
+    existing :class:`numpy.random.Generator` is used directly. Keeps the legacy
+    ``seed`` parameter working when ``rng`` is not supplied.
+    """
+    if rng is None:
+        return np.random.default_rng(seed)
+    if isinstance(rng, np.random.Generator):
+        return rng
+    if isinstance(rng, (int, np.integer)):
+        return np.random.default_rng(int(rng))
+    return np.random.default_rng(rng)
 
 
 class Mechanism:
@@ -108,20 +124,30 @@ class PostedPrice(Mechanism):
     values: Sequence[float]
     probs: Sequence[float]
     name: str = "Posted price"
+    prices: Optional[Sequence[float]] = None
 
     def __post_init__(self) -> None:
         self.values = np.asarray(self.values, dtype=float)
         self.probs = np.asarray(self.probs, dtype=float)
+        if self.prices is not None:
+            self.prices = np.asarray(self.prices, dtype=float)
         if not np.isclose(self.probs.sum(), 1.0):
             raise ValueError("type probabilities must sum to 1")
+
+    def _candidate_prices(self) -> np.ndarray:
+        """Price set to optimise over: explicit ``prices`` if given, else values."""
+        if self.prices is not None:
+            return np.asarray(self.prices, dtype=float)
+        return self.values
 
     def expected_revenue(self, price: float) -> float:
         """E[revenue] = price · P(value ≥ price)."""
         return float(price * self.probs[self.values >= price].sum())
 
-    def solve(self) -> Dict[str, Any]:
-        # Optimal posted price is one of the candidate type values.
-        revenues = {float(v): self.expected_revenue(v) for v in self.values}
+    def solve(self, title: Optional[str] = None, **_) -> Dict[str, Any]:
+        # Optimal posted price is one of the candidate prices (type values by default).
+        cand = self._candidate_prices()
+        revenues = {float(v): self.expected_revenue(float(v)) for v in cand}
         best = max(revenues, key=revenues.get)
         return {"revenues": revenues, "optimal_price": best,
                 "optimal_revenue": revenues[best]}
@@ -162,9 +188,9 @@ class PostedPrice(Mechanism):
         html.show(html.card((title or self.name) + " - walkthrough", body))
 
     def simulate(self, n_trials: int = 10_000, seed: int = 0,
-                 price: Optional[float] = None):
+                 price: Optional[float] = None, rng=None):
         """Monte-Carlo draws of buyer values; returns a DataFrame (and is reproducible)."""
-        rng = np.random.default_rng(seed)
+        rng = _resolve_rng(rng, seed)
         if price is None:
             price = self.solve()["optimal_price"]
         idx = rng.choice(len(self.values), size=n_trials, p=self.probs)
@@ -181,7 +207,7 @@ class PostedPrice(Mechanism):
                            figsize: Tuple[float, float] = (7.0, 4.2)):
         """Seller's expected revenue as a continuous function of the posted price."""
         vals = self.values
-        cand = sorted(set(float(v) for v in vals))
+        cand = sorted(set(float(v) for v in self._candidate_prices()))
         cand_R = [self.expected_revenue(p) for p in cand]
         p_star = cand[int(np.argmax(cand_R))]
         R_max = max(cand_R) if cand_R else 1.0
@@ -231,7 +257,7 @@ class FirstPriceAuction(Mechanism):
         n = self.n_bidders
         return self.lo + (n - 1) / (n + 1) * (self.hi - self.lo)
 
-    def solve(self) -> Dict[str, Any]:
+    def solve(self, title: Optional[str] = None, **_) -> Dict[str, Any]:
         return {"expected_revenue": self.expected_revenue(),
                 "shading_factor": (self.n_bidders - 1) / self.n_bidders}
 
@@ -264,9 +290,9 @@ class FirstPriceAuction(Mechanism):
                             html.steps(steps)))
 
     def simulate(self, n_trials: int = 10_000, seed: int = 0,
-                 strategy: str = "bne"):
+                 strategy: str = "bne", rng=None):
         """Monte-Carlo the auction under ``strategy`` ('bne' or 'truthful')."""
-        rng = np.random.default_rng(seed)
+        rng = _resolve_rng(rng, seed)
         cols = simulate_fpa(self.n_bidders, self.lo, self.hi, n_trials, rng,
                             strategy=strategy)
         return _df({"trial": np.arange(1, n_trials + 1), **cols})
@@ -329,7 +355,7 @@ class SecondPriceAuction(Mechanism):
         n = self.n_bidders
         return self.lo + (n - 1) / (n + 1) * (self.hi - self.lo)
 
-    def solve(self) -> Dict[str, Any]:
+    def solve(self, title: Optional[str] = None, **_) -> Dict[str, Any]:
         return {"expected_revenue": self.expected_revenue(), "dominant": "truthful"}
 
     def summary(self, title: Optional[str] = None) -> None:
@@ -358,9 +384,9 @@ class SecondPriceAuction(Mechanism):
                             html.steps(steps)))
 
     def simulate(self, n_trials: int = 10_000, seed: int = 0,
-                 strategy: str = "truthful"):
+                 strategy: str = "truthful", rng=None):
         """Monte-Carlo the auction under ``strategy`` (truthful / overbid / underbid)."""
-        rng = np.random.default_rng(seed)
+        rng = _resolve_rng(rng, seed)
         cols = simulate_spa(self.n_bidders, self.lo, self.hi, n_trials, rng,
                             strategy=strategy)
         return _df({"trial": np.arange(1, n_trials + 1), **cols})
@@ -438,7 +464,7 @@ class SpenceSignaling(Mechanism):
         if not self.c_high < self.c_low:
             raise ValueError("single-crossing requires c_high < c_low")
 
-    def solve(self) -> Dict[str, Any]:
+    def solve(self, title: Optional[str] = None, **_) -> Dict[str, Any]:
         d = self.w_high - self.w_low
         e_min = d / self.c_low      # low-type indifference (IC for low type)
         e_max = d / self.c_high     # high-type indifference (IC for high type)
@@ -483,9 +509,9 @@ class SpenceSignaling(Mechanism):
                             html.steps(steps)))
 
     def simulate(self, n_trials: int = 10_000, seed: int = 0,
-                 e_star: Optional[float] = None):
+                 e_star: Optional[float] = None, rng=None):
         """Draw types from ``prior_high`` and play the separating equilibrium."""
-        rng = np.random.default_rng(seed)
+        rng = _resolve_rng(rng, seed)
         if e_star is None:
             e_star = self.solve()["e_star"]
         types = rng.choice(["High", "Low"], size=n_trials,
@@ -572,7 +598,7 @@ class VCGAssignment(Mechanism):
     def _efficient(self, V: np.ndarray) -> Tuple[Tuple[int, ...], float]:
         return max(self._enumerate(V), key=lambda x: x[1])
 
-    def solve(self) -> Dict[str, Any]:
+    def solve(self, title: Optional[str] = None, **_) -> Dict[str, Any]:
         V = self.V
         n_b = V.shape[0]
         a_star, w_star = self._efficient(V)
@@ -626,13 +652,13 @@ class VCGAssignment(Mechanism):
                             html.steps(steps)))
 
     def simulate(self, n_trials: int = 200, seed: int = 0,
-                 report_noise: float = 0.0):
+                 report_noise: float = 0.0, rng=None):
         """Perturb reports by Gaussian noise to show truthfulness is dominant.
 
         With ``report_noise = 0`` the mechanism is deterministic; positive noise
         demonstrates that misreports never raise a bidder's true-value utility.
         """
-        rng = np.random.default_rng(seed)
+        rng = _resolve_rng(rng, seed)
         rows = []
         n_b = self.V.shape[0]
         for t in range(n_trials):
@@ -724,7 +750,7 @@ class PublicProject(Mechanism):
         self.citizens = list(self.citizens) if self.citizens else \
             [f"C{i+1}" for i in range(len(self.values))]
 
-    def solve(self) -> Dict[str, Any]:
+    def solve(self, title: Optional[str] = None, **_) -> Dict[str, Any]:
         v = self.values
         total = float(v.sum())
         build = total >= self.cost
@@ -769,9 +795,9 @@ class PublicProject(Mechanism):
                             html.steps(steps)))
 
     def simulate(self, n_trials: int = 1000, seed: int = 0,
-                 value_noise: float = 5.0):
+                 value_noise: float = 5.0, rng=None):
         """Perturb reported values by Gaussian noise; track build rate and deficit."""
-        rng = np.random.default_rng(seed)
+        rng = _resolve_rng(rng, seed)
         base = self.values
         rows = []
         for t in range(n_trials):
@@ -830,7 +856,8 @@ class Procurement(Mechanism):
         if self.n < 2:
             raise ValueError("need at least 2 firms")
 
-    def solve(self, max_exact: int = 5000) -> Dict[str, Any]:
+    def solve(self, max_exact: int = 5000, title: Optional[str] = None,
+              **_) -> Dict[str, Any]:
         costs, probs, n = self.costs, self.probs, self.n
         n_types = len(costs)
         if n_types ** n <= max_exact:
@@ -876,9 +903,9 @@ class Procurement(Mechanism):
                             html.steps(steps)))
 
     def simulate(self, n_trials: int = 10_000, seed: int = 0,
-                 strategy: str = "truthful"):
+                 strategy: str = "truthful", rng=None):
         """Monte-Carlo the reverse auction (truthful / overstate / understate)."""
-        rng = np.random.default_rng(seed)
+        rng = _resolve_rng(rng, seed)
         cols = simulate_procurement(self.costs, self.probs, self.n, n_trials, rng,
                                     strategy=strategy)
         return _df({"trial": np.arange(1, n_trials + 1), **cols})
@@ -966,7 +993,7 @@ class EntryGame(Mechanism):
             raise ValueError("prior_strong must be in [0, 1]")
         self.prior_strong = q
 
-    def solve(self) -> Dict[str, Any]:
+    def solve(self, title: Optional[str] = None, **_) -> Dict[str, Any]:
         pw, ps = self.payoff_weak[0], self.payoff_strong[0]
         e_enter = entry_expected_payoff(pw, ps, self.prior_strong)
         e_out = self.stay_out
@@ -1012,9 +1039,9 @@ class EntryGame(Mechanism):
             body += html.note(f"Threshold belief q* = {fmt_prob(s['q_star'])}: {rule}.")
         html.show(html.card((title or self.name) + " - BNE walkthrough", body))
 
-    def simulate(self, n_trials: int = 10_000, seed: int = 0):
+    def simulate(self, n_trials: int = 10_000, seed: int = 0, rng=None):
         """Draw incumbent types and play the BNE; returns a per-trial DataFrame."""
-        rng = np.random.default_rng(seed)
+        rng = _resolve_rng(rng, seed)
         q = self.prior_strong
         types = rng.choice(["Strong", "Weak"], size=n_trials, p=[q, 1.0 - q])
         action = self.solve()["best_response"]
@@ -1054,3 +1081,131 @@ class EntryGame(Mechanism):
             ax.set_title(title or f"{self.name}: entry threshold")
             ax.legend(loc="best")
         return fig, ax
+
+
+class BayesianGame:
+    """Compatibility facade matching the original ELTE notebook call signatures.
+
+    The notebook dispatched every mechanism through a single ``BayesianGame``
+    with classmethod factories. Here each factory just builds the corresponding
+    focused dataclass, translating the notebook's keyword names to this port's
+    field names. Extra unknown keywords are swallowed via ``**_`` so old
+    notebook calls never error.
+    """
+
+    @classmethod
+    def posted_price(cls, values, probs, prices=None, name="Posted Price",
+                     **_) -> PostedPrice:
+        return PostedPrice(values, probs, name=name, prices=prices)
+
+    @classmethod
+    def entry_game(cls, payoffs_weak, payoffs_strong, prior_strong,
+                   stay_out=0.0, name="Entry Game", **_) -> EntryGame:
+        return EntryGame(payoff_weak=payoffs_weak, payoff_strong=payoffs_strong,
+                         prior_strong=prior_strong, stay_out=stay_out, name=name)
+
+    @classmethod
+    def first_price_auction(cls, n_bidders=2, value_lo=0.0, value_hi=1.0,
+                            name="First-Price Auction", **_) -> FirstPriceAuction:
+        return FirstPriceAuction(n_bidders=n_bidders, lo=value_lo, hi=value_hi,
+                                 name=name)
+
+    @classmethod
+    def second_price_auction(cls, n_bidders=2, value_lo=0.0, value_hi=1.0,
+                             name="Second-Price Auction",
+                             **_) -> SecondPriceAuction:
+        return SecondPriceAuction(n_bidders=n_bidders, lo=value_lo, hi=value_hi,
+                                  name=name)
+
+    @classmethod
+    def spence_signaling(cls, w_low, w_high, c_low, c_high, prior_high=0.5,
+                         name="Spence Signaling", **_) -> SpenceSignaling:
+        return SpenceSignaling(w_low=w_low, w_high=w_high, c_low=c_low,
+                               c_high=c_high, prior_high=prior_high, name=name)
+
+    @classmethod
+    def reverse_auction(cls, costs, probs, n_firms=3, name="Procurement",
+                        **_) -> Procurement:
+        return Procurement(costs=costs, probs=probs, n=n_firms, name=name)
+
+    @classmethod
+    def vcg_assignment(cls, value_matrix, bidder_names=None, item_names=None,
+                       name="VCG Assignment", **_) -> VCGAssignment:
+        return VCGAssignment(V=np.asarray(value_matrix, float),
+                             bidders=bidder_names, items=item_names, name=name)
+
+    @classmethod
+    def public_project(cls, values, cost, citizen_names=None,
+                       name="Public Project", **_) -> PublicProject:
+        return PublicProject(values=values, cost=cost, citizens=citizen_names,
+                             name=name)
+
+    @staticmethod
+    def sweep(factory: Callable[[float], "Mechanism"],
+              param_range: Sequence[float],
+              param_name: str = "parameter",
+              metrics: Optional[Sequence[str]] = None,
+              metric: Optional[str] = None,
+              title: Optional[str] = None,
+              hlines=None, vlines=None,
+              figsize: Tuple[float, float] = (7.0, 4.4)):
+        """Sweep one parameter, plot the requested solve() metric(s), return (fig, ax, df).
+
+        ``factory(v)`` builds a mechanism for parameter value ``v``. Pass a
+        single ``metric`` name or a list of ``metrics`` (keys into each
+        mechanism's ``.solve()`` dict). If neither is given, the numeric scalar
+        keys of the first ``solve()`` result are inferred. Reference lines are
+        drawn via :func:`plots.ref_lines`. Returns ``(fig, ax, df)`` with a
+        pandas DataFrame indexed by the parameter values.
+        """
+        xs = [float(v) for v in param_range]
+
+        # Resolve the metric list.
+        keys: List[str]
+        if metrics is not None:
+            keys = list(metrics)
+        elif metric is not None:
+            keys = [metric]
+        else:
+            keys = []  # inferred below from the first result
+
+        rows: List[Dict[str, float]] = []
+        for v in xs:
+            sol = factory(v).solve()
+            if not isinstance(sol, dict):
+                sol = {}
+            if not keys:
+                keys = [k for k, val in sol.items()
+                        if isinstance(val, (int, float, np.integer, np.floating))
+                        and not isinstance(val, bool)]
+            row = {}
+            for k in keys:
+                val = sol.get(k, np.nan)
+                try:
+                    row[k] = float(val)
+                except (TypeError, ValueError):
+                    row[k] = np.nan
+            rows.append(row)
+
+        df = _df({k: [r.get(k, np.nan) for r in rows] for k in keys})
+        try:  # set the parameter values as the index when pandas is present
+            df.index = xs
+            df.index.name = param_name
+        except Exception:  # pragma: no cover - pandas always present in practice
+            pass
+
+        palette = [C["p1"], C["p2"], C["accent"], C["ce"], C["chance"]]
+        with rc_context():
+            import matplotlib.pyplot as plt
+            fig, ax = plt.subplots(figsize=figsize)
+            for k, key in enumerate(keys):
+                ys = [r.get(key, np.nan) for r in rows]
+                ax.plot(xs, ys, color=palette[k % len(palette)], lw=2.2,
+                        marker="o", markersize=4, label=key)
+            plots.ref_lines(ax, hlines, vlines)
+            ax.set_xlabel(param_name)
+            ax.set_ylabel("metric value" if len(keys) != 1 else keys[0])
+            ax.set_title(title or f"Comparative statics in {param_name}")
+            if keys:
+                ax.legend(loc="best")
+        return fig, ax, df

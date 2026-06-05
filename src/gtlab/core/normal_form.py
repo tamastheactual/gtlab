@@ -317,7 +317,9 @@ class NormalFormGame:
         if (m, n) == (3, 3):
             return self._plot_mixed_3x3(title=title, figsize=figsize)
         if (m, n) != (2, 2):
-            raise ValueError(f"plot_mixed supports 2x2 and 3x3 games, got {m}x{n}")
+            # Indifference lines/simplex only make sense for 2x2 / 3x3. For larger
+            # games fall back to bar charts of the (first) mixed equilibrium.
+            return self._plot_mixed_bars(title=title, figsize=figsize)
 
         import matplotlib.pyplot as plt
 
@@ -404,18 +406,57 @@ class NormalFormGame:
             ax.legend(handles=handles, loc="upper left")
         return fig, ax
 
+    def _plot_mixed_bars(self, title: Optional[str] = None, figsize=(10.0, 4.0)):
+        """Fallback for games larger than 3x3: bar charts of the first mixed
+        equilibrium's strategy probabilities for each player.
+
+        Mixed-equilibrium enumeration is exponential, so for large action sets we
+        skip it and show a note rather than hang.
+        """
+        import matplotlib.pyplot as plt
+
+        m, n = self.shape
+        # Support enumeration is intractable for large games; guard it.
+        eqs = self.equilibria() if max(m, n) <= 8 else None
+        with rc_context():
+            fig, (ax_r, ax_c) = plt.subplots(1, 2, figsize=figsize)
+            fig.suptitle(title or f"{self.name} - equilibrium strategies",
+                         fontweight="bold")
+            if not eqs:
+                msg = ("no equilibrium found" if eqs == [] else
+                       f"mixed-strategy view omitted for a {m}x{n} game\n"
+                       "(use .summary() / .solve())")
+                for ax in (ax_r, ax_c):
+                    ax.text(0.5, 0.5, msg, ha="center", va="center",
+                            color=C["muted"])
+                    ax.axis("off")
+                return fig, (ax_r, ax_c)
+            p, q = eqs[0]
+            ax_r.bar(range(len(p)), p, color=C["p1"])
+            ax_r.set_xticks(range(len(p)), self.row_actions, rotation=45, ha="right")
+            ax_r.set_ylabel("probability")
+            ax_r.set_ylim(0, 1)
+            ax_r.set_title(f"{self.row_name}'s mix p*")
+            ax_c.bar(range(len(q)), q, color=C["p2"])
+            ax_c.set_xticks(range(len(q)), self.col_actions, rotation=45, ha="right")
+            ax_c.set_ylim(0, 1)
+            ax_c.set_title(f"{self.col_name}'s mix q*")
+        return fig, (ax_r, ax_c)
+
     # ── continuous best-response curves (static) ─────────────────────────────
     @staticmethod
     def plot_br_curves(br1: Callable, br2: Callable, *, ne=None,
                        domain=(0.0, 5.0), br1_label="$BR_1$", br2_label="$BR_2$",
                        xlabel="$x_1$", ylabel="$x_2$",
                        title="Best-response curves", figsize=(6.0, 5.5),
-                       n_points=400):
+                       n_points=400, hlines=None, vlines=None):
         """Plot best-response curves of a 2-player continuous-strategy game.
 
         ``br1(x2) -> x1`` and ``br2(x1) -> x2``. ``ne`` is an optional list of
-        ``(x1, x2)`` (or ``(x1, x2, label)``) equilibria to mark. Returns
-        ``(fig, ax)``.
+        ``(x1, x2)`` (or ``(x1, x2, label)``) equilibria to mark. ``hlines`` /
+        ``vlines`` draw dotted reference lines at the given y / x values (each a
+        number or a ``(value, label)`` / ``(value, label, color)`` tuple).
+        Returns ``(fig, ax)``.
         """
         import matplotlib.pyplot as plt
 
@@ -435,6 +476,7 @@ class NormalFormGame:
                         markeredgecolor="white", zorder=6)
                 ax.annotate(lbl, (x1, x2), textcoords="offset points",
                             xytext=(10, 10), color=C["ne"], fontweight="bold")
+            _ref_lines(ax, hlines, vlines)
             ax.set_xlabel(xlabel)
             ax.set_ylabel(ylabel)
             ax.set_title(title)

@@ -80,7 +80,7 @@ def test_iesds_and_properties():
 
 def test_welfare_and_poa():
     g = chain_store_game()
-    out, score = g.social_welfare("utilitarian")
+    out, score = g.social_welfare("utilitarian", return_outcome=True)
     assert np.isfinite(score)
     assert np.isfinite(g.price_of_anarchy())
     assert g.terminal_payoffs().shape[1] == 2

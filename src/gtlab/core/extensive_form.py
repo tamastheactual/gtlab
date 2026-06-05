@@ -246,18 +246,27 @@ class ExtensiveFormGame:
     def pareto_frontier_vertices(self) -> List[Tuple[float, float]]:
         return efx.pareto_frontier_vertices(self.terminal_payoffs())
 
-    def social_welfare(self, objective: str = "utilitarian") -> Tuple[np.ndarray, float]:
-        """Best terminal outcome and its welfare score for the given objective."""
+    def social_welfare(self, objective: str = "utilitarian",
+                       return_outcome: bool = False, baseline: float = 0.0):
+        """Welfare score (and optionally the best outcome) for an objective.
+
+        By default returns the scalar welfare score (float). Set
+        ``return_outcome=True`` to also get the maximizing outcome as
+        ``(outcome, score)``. ``baseline`` is passed to the Nash objective.
+        """
         outcomes = self.terminal_payoffs()
-        idx = solvers.best_outcome(outcomes, objective)
+        idx = solvers.best_outcome(outcomes, objective, baseline)
         score = {"utilitarian": solvers.utilitarian,
                  "egalitarian": solvers.egalitarian,
-                 "nash": solvers.nash_welfare}[objective](outcomes[idx])
-        return outcomes[idx], float(score)
+                 "nash": lambda p: solvers.nash_welfare(p, baseline),
+                 }[objective](outcomes[idx])
+        if return_outcome:
+            return outcomes[idx], float(score)
+        return float(score)
 
     def price_of_anarchy(self) -> float:
         """Optimal utilitarian welfare divided by the SPE's total payoff."""
-        _, opt = self.social_welfare("utilitarian")
+        opt = self.social_welfare("utilitarian")
         eq_w = float(np.sum(self.backward_induction()["value"]))
         if abs(eq_w) < 1e-12:
             return math.inf if opt > 0 else 1.0
@@ -284,6 +293,14 @@ class ExtensiveFormGame:
         return pd.DataFrame(
             [[(A[i, j], B[i, j]) for j in range(A.shape[1])]
              for i in range(A.shape[0])], index=idx, columns=cols)
+
+    def show_dataframe(self, df, title: Optional[str] = None) -> None:
+        """Render a pandas DataFrame as an HTML card/table."""
+        html.show(html.card(
+            title or "",
+            html.table([str(c) for c in df.columns],
+                       [[str(v) for v in row]
+                        for row in df.values.tolist()])))
 
     def is_zero_sum(self, tol: float = 1e-9) -> bool:
         if len(self.players) != 2:
@@ -413,10 +430,21 @@ class ExtensiveFormGame:
         tbl = html.table(["node", "player", "chosen action"], rows)
         return html.kv([("SPE payoff", fmt_vec(res["value"]))]) + tbl
 
-    def solve(self, title: Optional[str] = None) -> None:
-        """Show the backward-induction (SPE) solution."""
-        html.show(html.card(title or f"{self.name} - backward induction",
-                            self._solution_html()))
+    def solve(self, title: Optional[str] = None,
+              _display_result: bool = True) -> Dict[str, Any]:
+        """Show the backward-induction (SPE) solution and return its payoffs.
+
+        Returns ``{"payoffs": value, "spe_strategies": strategy,
+        "spe_all_actions": all_actions}``. Set ``_display_result=False`` to
+        suppress the HTML card (notebook usage).
+        """
+        res = self.backward_induction()
+        if _display_result:
+            html.show(html.card(title or f"{self.name} - backward induction",
+                                self._solution_html()))
+        return {"payoffs": res["value"],
+                "spe_strategies": res["strategy"],
+                "spe_all_actions": res["all_actions"]}
 
     # ── induced normal-form rich rendering (NormalFormGame flag set) ─────────
     def _matrix_html(self, show_br: bool = False, show_ne: bool = False,
@@ -471,7 +499,8 @@ class ExtensiveFormGame:
 
     def solve_nf(self, title: Optional[str] = None, show_br: bool = True,
                  show_ne: bool = True, show_pareto: bool = True,
-                 show_dominated: bool = True, show_mixed: bool = True) -> None:
+                 show_dominated: bool = True, show_mixed: bool = True,
+                 show_deviation: bool = False) -> None:
         """Rich normal-form analysis of the induced bimatrix.
 
         Mirrors :meth:`NormalFormGame.solve`'s flag set: best responses,
@@ -910,9 +939,13 @@ class ExtensiveFormGame:
 
     # ── comparison ───────────────────────────────────────────────────────────
     @staticmethod
-    def compare(*games: "ExtensiveFormGame") -> None:
-        """Render several games' summaries side by side."""
-        html.compare_via(games, "summary")
+    def compare(*args, labels=None, **kwargs) -> None:
+        """Render several games' summaries side by side.
+
+        ``labels`` and extra keyword arguments are accepted for notebook
+        compatibility and currently ignored.
+        """
+        html.compare_via(args, "summary")
 
     def __repr__(self) -> str:
         n_decision = sum(1 for d in self.tree.values()

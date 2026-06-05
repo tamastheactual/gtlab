@@ -57,10 +57,28 @@ class StochasticGame:
         self.col_actions = list(self.col_actions) if self.col_actions else [f"b{j}" for j in range(nB)]
 
     @cached_method
-    def solve(self, tol: float = 1e-8, max_iter: int = 500) -> dict:
+    def value_iteration(self, tol: float = 1e-8, max_iter: int = 500) -> dict:
         """Run value iteration; cache and return the result dict (keyed by args)."""
         return solvers.value_iteration(
             self.r, self.P, self.gamma, tol=tol, max_iter=max_iter)
+
+    def solve(self, arg=None, title: Optional[str] = None, *,
+              tol: float = 1e-8, max_iter: int = 500):
+        """Solve by value iteration, or render stage games at V*.
+
+        Two call styles are supported:
+
+        * ``solve()`` / ``solve(tol=..., max_iter=...)`` runs value iteration and
+          returns the cached VI result dict (the original behaviour).
+        * ``solve(result_dict[, title])`` (the ELTE notebook style) renders the
+          stage games at V*; if ``title`` is given without ``arg`` the current VI
+          result is used. Returns ``None`` after showing HTML.
+        """
+        if isinstance(arg, dict) or title is not None:
+            result = arg if isinstance(arg, dict) else self.value_iteration(
+                tol=tol, max_iter=max_iter)
+            return self.solve_stage_games(result, title)
+        return self.value_iteration(tol=tol, max_iter=max_iter)
 
     # ── display ──────────────────────────────────────────────────────────────
     def summary(self, title: Optional[str] = None) -> None:
@@ -104,15 +122,15 @@ class StochasticGame:
                                  title=title or f"{self.name} - value iteration",
                                  ylabel="||TV - V|| inf")
 
+    def convergence_plot(self, tol: float = 1e-8, title: Optional[str] = None):
+        """Alias for :meth:`plot_convergence` matching the notebook API."""
+        return self.plot_convergence(title=title)
+
     # ── core helpers ──────────────────────────────────────────────────────────
     def stage_game(self, s: int, V: np.ndarray) -> np.ndarray:
         """Stage-game matrix M_s(V) = r(s) + gamma * E_s'[V] for one state."""
         return solvers.stage_game(self.r[s], self.P[s], np.asarray(V, dtype=float),
                                   self.gamma)
-
-    def value_iteration(self, tol: float = 1e-8, max_iter: int = 500) -> dict:
-        """Alias for :meth:`solve` matching the notebook API."""
-        return self.solve(tol=tol, max_iter=max_iter)
 
     def q_values(self, result: Optional[dict] = None) -> np.ndarray:
         """Q*(s,a,b) = r(s,a,b) + gamma * sum_s' P(s'|s,a,b) V*(s').

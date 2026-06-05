@@ -45,6 +45,10 @@ class ZeroSumGame:
         """Return ``{"p", "q", "value"}`` - optimal mixes and game value."""
         return solvers.solve_zero_sum(self.A)
 
+    def solve_lp(self) -> dict:
+        """Alias for :meth:`solve_value` (returns ``{"p", "q", "value"}``)."""
+        return self.solve_value()
+
     @cached_method
     def pure_saddle_points(self) -> List[Tuple[int, int]]:
         """Pure saddle points (maximin row meets minimax column)."""

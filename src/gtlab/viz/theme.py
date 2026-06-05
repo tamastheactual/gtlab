@@ -46,36 +46,35 @@ RC_PARAMS = {
 }
 
 # ── CSS ──────────────────────────────────────────────────────────────────
-# One stylesheet for all HTML output, dark-mode aware. Class names are
-# prefixed ``gt-`` so they never collide with notebook or Colab styles.
+# One stylesheet for all HTML output. It is THEME-AGNOSTIC: instead of picking
+# light/dark via @media (prefers-color-scheme) -- which tracks the OS, not
+# Colab's own light/dark toggle and so produced dark cards on a light Colab
+# page -- it inherits the page's text color and uses translucent grey overlays
+# for backgrounds/borders. That blends correctly into light OR dark notebooks.
+# Player accent colors (blue/red) and highlights are chosen to read on both.
+# Class names are prefixed ``gt-`` so they never collide with notebook styles.
 CSS = """
 <style>
 .gt-wrap { font-family: -apple-system, Segoe UI, Roboto, sans-serif;
-           color: var(--gt-text, #0f172a); margin: 0.4em 0; }
+           color: inherit; margin: 0.4em 0; }
 .gt-wrap table { border-collapse: collapse; margin: 0.4em 0; }
-.gt-wrap th, .gt-wrap td { border: 1px solid #cbd5e1; padding: 6px 10px;
-           text-align: center; font-variant-numeric: tabular-nums; }
-.gt-wrap th { background: #f1f5f9; font-weight: 600; }
-.gt-card { border: 1px solid #e2e8f0; border-radius: 10px; padding: 12px 16px;
-           margin: 8px 0; background: #ffffff; }
+.gt-wrap th, .gt-wrap td { border: 1px solid rgba(128,128,128,0.35);
+           padding: 6px 10px; text-align: center;
+           font-variant-numeric: tabular-nums; }
+.gt-wrap th { background: rgba(128,128,128,0.16); font-weight: 600; }
+.gt-card { border: 1px solid rgba(128,128,128,0.3); border-radius: 10px;
+           padding: 12px 16px; margin: 8px 0; background: rgba(128,128,128,0.06); }
 .gt-title { font-weight: 700; font-size: 1.05em; margin-bottom: 6px; }
-.gt-muted { color: #64748b; font-size: 0.9em; }
+.gt-muted { opacity: 0.7; font-size: 0.9em; }
 .gt-br { text-decoration: underline; text-decoration-thickness: 2px; }
 .gt-ne { outline: 2px solid #16a34a; outline-offset: -2px; }
 .gt-pareto::after { content: " \\2605"; color: #eab308; }
 .gt-dom { text-decoration: line-through; opacity: 0.55; }
-.gt-row { color: #2563eb; }
-.gt-col { color: #dc2626; }
+.gt-row { color: #3b82f6; }
+.gt-col { color: #ef4444; }
 .gt-flex { display: flex; flex-wrap: wrap; gap: 16px; align-items: flex-start; }
 .gt-steps { margin: 6px 0 4px 0; padding-left: 1.3em; }
 .gt-steps li { margin: 4px 0; line-height: 1.45; }
-@media (prefers-color-scheme: dark) {
-  .gt-wrap { color: #e2e8f0; }
-  .gt-wrap th { background: #1e293b; }
-  .gt-wrap th, .gt-wrap td { border-color: #475569; }
-  .gt-card { background: #0f172a; border-color: #334155; }
-  .gt-muted { color: #94a3b8; }
-}
 </style>
 """
 

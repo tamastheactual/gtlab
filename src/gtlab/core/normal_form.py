@@ -19,6 +19,8 @@ from ..solvers.normal_form_extra import (envelope_crossings, expected_payoffs,
                                          sweep_regions_data)
 from ..viz import C, fmt, fmt_prob, fmt_prob_vec, html, plots, rc_context
 
+_ref_lines = plots.ref_lines
+
 
 @dataclass
 class NormalFormGame:
@@ -337,8 +339,10 @@ class NormalFormGame:
                           markeredgecolor="white", zorder=6)
                 ax_r.axvline(ps, ls=":", lw=0.8, color=C["ne"], alpha=0.5)
                 ax_r.annotate(f"$p^*$={fmt_prob(ps)}", (ps, us),
-                              textcoords="offset points", xytext=(8, 8),
-                              color=C["ne"], fontweight="bold")
+                              textcoords="offset points", xytext=(10, -16),
+                              ha="left", va="top", color=C["ne"], fontweight="bold",
+                              bbox=dict(boxstyle="round,pad=0.2", fc="white",
+                                        ec="none", alpha=0.8))
             ax_r.set_xlabel(f"Pr({self.col_name} plays {self.col_actions[0]})")
             ax_r.set_ylabel(f"Expected payoff to {self.row_name}")
             ax_r.set_xlim(-0.02, 1.02)
@@ -353,8 +357,10 @@ class NormalFormGame:
                           markeredgecolor="white", zorder=6)
                 ax_c.axvline(ps, ls=":", lw=0.8, color=C["ne"], alpha=0.5)
                 ax_c.annotate(f"$p^*$={fmt_prob(ps)}", (ps, us),
-                              textcoords="offset points", xytext=(8, 8),
-                              color=C["ne"], fontweight="bold")
+                              textcoords="offset points", xytext=(10, -16),
+                              ha="left", va="top", color=C["ne"], fontweight="bold",
+                              bbox=dict(boxstyle="round,pad=0.2", fc="white",
+                                        ec="none", alpha=0.8))
             ax_c.set_xlabel(f"Pr({self.row_name} plays {self.row_actions[0]})")
             ax_c.set_ylabel(f"Expected payoff to {self.col_name}")
             ax_c.set_xlim(-0.02, 1.02)
@@ -440,8 +446,13 @@ class NormalFormGame:
     # ── comparative statics sweeps (static) ──────────────────────────────────
     @staticmethod
     def sweep_mixed(factory: Callable, param_range, param_name="parameter",
-                    title: Optional[str] = None, figsize=(7.0, 4.0)):
-        """Plot first-equilibrium mixing probabilities against a swept parameter."""
+                    title: Optional[str] = None, figsize=(7.0, 4.0),
+                    hlines=None, vlines=None):
+        """Plot first-equilibrium mixing probabilities against a swept parameter.
+
+        ``hlines`` / ``vlines`` draw dotted reference lines at the given y / x
+        values (e.g. a probability level or a parameter of interest).
+        """
         import matplotlib.pyplot as plt
 
         prange, row_probs, col_probs = sweep_mixed_data(factory, param_range)
@@ -469,6 +480,7 @@ class NormalFormGame:
             for k, j in enumerate(col_idx):
                 ax.plot(prange, col_probs[j], color=cc[k % len(cc)], lw=2.2,
                         ls="--", label=f"Pr({g0.col_name} plays {g0.col_actions[j]})")
+            _ref_lines(ax, hlines, vlines)
             ax.set_xlabel(param_name)
             ax.set_ylabel("Equilibrium mixing probability")
             ax.set_ylim(-0.02, 1.02)
@@ -478,8 +490,12 @@ class NormalFormGame:
 
     @staticmethod
     def sweep_pure(factory: Callable, param_range, param_name="parameter",
-                   title: Optional[str] = None, figsize=(7.0, 3.8)):
-        """Plot pure-NE structure (which profiles are NE) against a swept parameter."""
+                   title: Optional[str] = None, figsize=(7.0, 3.8),
+                   hlines=None, vlines=None):
+        """Plot pure-NE structure (which profiles are NE) against a swept parameter.
+
+        ``hlines`` / ``vlines`` draw dotted reference lines at the given y / x values.
+        """
         import matplotlib.pyplot as plt
 
         prange, profiles, is_ne, n_eq = sweep_pure_data(factory, param_range)
@@ -500,6 +516,7 @@ class NormalFormGame:
                         color=colors[k % len(colors)], label=f"{name} is NE")
             ax.step(prange, n_eq, where="mid", lw=2.0, ls="--",
                     color=C["muted"], label="# pure NE")
+            _ref_lines(ax, hlines, vlines)
             ax.set_xlabel(param_name)
             ax.set_ylabel("Count / indicator")
             ax.set_yticks(range((max(n_eq) if n_eq else 1) + 1))

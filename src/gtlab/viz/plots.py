@@ -22,6 +22,18 @@ def new_axes(figsize=(6.0, 4.0)):
     return fig, ax
 
 
+def ref_lines(ax, hlines=None, vlines=None) -> None:
+    """Draw optional dotted reference lines at the given y / x values.
+
+    Used by the parameter-sweep plots so callers can mark a probability level
+    or a parameter of interest (matches the notebook ``hlines``/``vlines`` API).
+    """
+    for y in (hlines or []):
+        ax.axhline(float(y), ls=":", lw=1.0, color=C["muted"], alpha=0.8, zorder=1)
+    for x in (vlines or []):
+        ax.axvline(float(x), ls=":", lw=1.0, color=C["muted"], alpha=0.8, zorder=1)
+
+
 def br_heatmap(
     br_row: np.ndarray,
     br_col: np.ndarray,

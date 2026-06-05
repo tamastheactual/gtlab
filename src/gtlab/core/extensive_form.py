@@ -721,8 +721,12 @@ class ExtensiveFormGame:
     # ── parameter sweeps (static, over a game-factory + range) ───────────────
     @staticmethod
     def sweep_mixed(factory, param_range, param_name: str = "parameter",
-                    title: Optional[str] = None, figsize=(7.0, 4.0)):
-        """Track equilibrium mixing probabilities vs a scalar parameter."""
+                    title: Optional[str] = None, figsize=(7.0, 4.0),
+                    hlines=None, vlines=None):
+        """Track equilibrium mixing probabilities vs a scalar parameter.
+
+        ``hlines`` / ``vlines`` draw dotted reference lines at the given values.
+        """
         param_range = np.asarray(param_range, dtype=float)
         g0 = factory(float(param_range[0]))
         nf0 = g0._nf()
@@ -755,6 +759,7 @@ class ExtensiveFormGame:
             for j in range(c - 1):
                 ax.plot(param_range, col_probs[j], lw=2.2, ls="--",
                         label=f"Pr({g0.players[1]} plays {cl[j]})")
+            plots.ref_lines(ax, hlines, vlines)
             ax.set_xlabel(param_name)
             ax.set_ylabel("equilibrium mixing probability")
             ax.set_ylim(-0.02, 1.02)
@@ -764,8 +769,12 @@ class ExtensiveFormGame:
 
     @staticmethod
     def sweep_pure(factory, param_range, param_name: str = "parameter",
-                   title: Optional[str] = None, figsize=(7.0, 3.8)):
-        """Track which profiles are pure NE (and the NE count) vs a parameter."""
+                   title: Optional[str] = None, figsize=(7.0, 3.8),
+                   hlines=None, vlines=None):
+        """Track which profiles are pure NE (and the NE count) vs a parameter.
+
+        ``hlines`` / ``vlines`` draw dotted reference lines at the given values.
+        """
         param_range = np.asarray(param_range, dtype=float)
         g0 = factory(float(param_range[0]))
         nf0 = g0._nf()
@@ -781,13 +790,18 @@ class ExtensiveFormGame:
             for p in profiles:
                 is_ne[p].append(int(p in nes))
         active = [p for p in profiles if any(is_ne[p])]
+        ls_cycle = ["-", "--", ":", "-."]
         with rc_context():
             fig, ax = plots.new_axes(figsize)
-            for p in active:
-                ax.step(param_range, is_ne[p], where="mid", lw=2.2,
+            for k, p in enumerate(active):
+                # Fan out coincident indicators so every legend entry is visible.
+                ys = np.asarray(is_ne[p], dtype=float) * (1 - 0.04 * k)
+                ax.step(param_range, ys, where="mid", lw=2.2,
+                        ls=ls_cycle[k % len(ls_cycle)], alpha=0.95 - 0.08 * k,
                         label=f"({rl[p[0]]}, {cl[p[1]]}) is NE")
-            ax.step(param_range, n_eq, where="mid", lw=2.2, ls="--",
+            ax.step(param_range, n_eq, where="mid", lw=2.0, ls="--",
                     color=C["muted"], label="# pure NE")
+            plots.ref_lines(ax, hlines, vlines)
             ax.set_xlabel(param_name)
             ax.set_ylabel("count / indicator")
             ax.set_yticks(range((max(n_eq) if n_eq else 1) + 1))

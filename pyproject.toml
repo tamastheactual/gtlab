@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "gtlab"
-version = "0.1.0"
+version = "0.2.0"
 description = "Teaching toolkit for the ELTE Game Theory course: solvers, game library, and Jupyter-friendly visualizations."
 readme = "README.md"
 requires-python = ">=3.9"
@@ -31,6 +31,7 @@ dependencies = [
     "scipy>=1.7",
     "matplotlib>=3.4",
     "pandas>=1.3",
+    "networkx>=2.6",
 ]
 
 [project.optional-dependencies]

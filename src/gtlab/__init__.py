@@ -22,18 +22,20 @@ Layers:
   * ``gtlab.games``   - ready-made example games
 """
 from . import games, solvers, viz
-from .core import (CorrelatedGame, ExtensiveFormGame, FirstPriceAuction,
+from .core import (CheapTalkGame, CorrelatedGame, EntryGame,
+                   ExtensiveFormGame, FirstPriceAuction, GeneralSumSG,
                    Mechanism, NormalFormGame, PostedPrice, Procurement,
                    PublicProject, SecondPriceAuction, SpenceSignaling,
                    StochasticGame, VCGAssignment, ZeroSumGame)
 from .viz import apply_rc
 
-__version__ = "0.1.0"
+__version__ = "0.2.0"
 
 __all__ = [
     "NormalFormGame", "ZeroSumGame", "CorrelatedGame", "StochasticGame",
+    "GeneralSumSG", "CheapTalkGame",
     "ExtensiveFormGame", "Mechanism", "PostedPrice", "FirstPriceAuction",
     "SecondPriceAuction", "SpenceSignaling", "VCGAssignment", "PublicProject",
-    "Procurement",
+    "Procurement", "EntryGame",
     "solvers", "viz", "games", "apply_rc", "__version__",
 ]

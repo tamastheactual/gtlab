@@ -91,9 +91,13 @@ The solver layer has golden-value tests so refactors stay behavior-preserving.
 ## Notebook migration
 
 Each lecture notebook drops its ~2,000-line engine class and imports from
-`gtlab` instead, keeping only narrative and example-specific calls. The methods
-the notebooks relied on (`.summary()`, `.solve()`, `.explain()`, `.plot_*()`)
-are preserved on the core classes.
+`gtlab` instead, keeping only narrative and example-specific calls. As of
+**0.2.0** the package covers the full notebook surface: every solver, plot
+(`plot_tree`, `plot_mixed`, `plot_frontier`, ...), parameter sweep, styled
+walkthrough (`explain`, `iesds_explain`, `*_detail`, `verify_*`), Monte-Carlo
+`simulate`, and the `GeneralSumSG` / `CheapTalkGame` models. The methods the
+notebooks relied on (`.summary()`, `.solve()`, `.explain()`, `.plot_*()`) are
+preserved on the core classes.
 
 ```python
 # old: 1,800 lines of NormalFormGame defined inline

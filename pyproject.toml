@@ -1,0 +1,54 @@
+[build-system]
+requires = ["setuptools>=64", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "gtlab"
+version = "0.1.0"
+description = "Teaching toolkit for the ELTE Game Theory course: solvers, game library, and Jupyter-friendly visualizations."
+readme = "README.md"
+requires-python = ">=3.9"
+license = { text = "MIT" }
+authors = [{ name = "Tamás Takács", email = "tamastheactual@gmail.com" }]
+keywords = ["game-theory", "nash-equilibrium", "teaching", "elte", "education"]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Education",
+    "Intended Audience :: Science/Research",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Scientific/Engineering :: Mathematics",
+    "Topic :: Education",
+]
+
+dependencies = [
+    "numpy>=1.21",
+    "scipy>=1.7",
+    "matplotlib>=3.4",
+    "pandas>=1.3",
+]
+
+[project.optional-dependencies]
+# Mixed-Nash via support enumeration in normal/extensive-form games.
+nash = ["nashpy>=0.0.35"]
+# Linear-programming welfare objectives (utilitarian / egalitarian).
+welfare = ["pulp>=2.6"]
+# Everything, for running the full notebook suite.
+full = ["nashpy>=0.0.35", "pulp>=2.6"]
+dev = ["pytest>=7.0"]
+
+[project.urls]
+Homepage = "https://github.com/tamastheactual/gtlab"
+Repository = "https://github.com/tamastheactual/gtlab"
+Issues = "https://github.com/tamastheactual/gtlab/issues"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]

@@ -17,8 +17,8 @@ class StochasticGame:
 
     Parameters
     ----------
-    r      : reward tensor, shape (S, A, B) — row player's stage reward.
-    P      : transition tensor, shape (S, A, B, S) — next-state distribution.
+    r      : reward tensor, shape (S, A, B) - row player's stage reward.
+    P      : transition tensor, shape (S, A, B, S) - next-state distribution.
     gamma  : discount factor in [0, 1).
     """
 
@@ -64,31 +64,31 @@ class StochasticGame:
                          fmt_prob_vec(pol["q"])])
         tbl = html.table(["V*(s)", "row mix p*", "col mix q*"], rows,
                          row_headers=self.state_names)
-        html.show(html.card(title or f"{self.name} — optimal policy",
+        html.show(html.card(title or f"{self.name} - optimal policy",
                             tbl + html.note(f"converged in {res['n_iter']} iterations")))
 
     def explain(self, title: Optional[str] = None) -> None:
         """Walkthrough of value iteration via the Shapley operator."""
         res = self.solve()
         items = [
-            "<b>Step 1 — Stage games.</b> At a value guess V, each state s defines a "
+            "<b>Step 1 - Stage games.</b> At a value guess V, each state s defines a "
             "matrix game M<sub>s</sub>(V) = r(s) + γ·E<sub>s'</sub>[V].",
-            "<b>Step 2 — Shapley operator.</b> Solve each stage game's minimax value; "
+            "<b>Step 2 - Shapley operator.</b> Solve each stage game's minimax value; "
             "collecting them gives (TV)(s). T is a γ-contraction, so it has a unique "
             "fixed point.",
-            f"<b>Step 3 — Value iteration.</b> Iterating V ← TV converged in "
+            f"<b>Step 3 - Value iteration.</b> Iterating V ← TV converged in "
             f"{res['n_iter']} steps to V* = {fmt_vec(res['V_star'])}.",
-            "<b>Step 4 — Stationary policy.</b> The minimax mixes of the stage games "
+            "<b>Step 4 - Stationary policy.</b> The minimax mixes of the stage games "
             "at V* form the optimal stationary policy (see <code>policy_summary</code>).",
         ]
-        html.show(html.card(title or f"{self.name} — value iteration",
+        html.show(html.card(title or f"{self.name} - value iteration",
                             html.steps(items)))
 
     def plot_convergence(self, title: Optional[str] = None):
         res = self.solve()
         residuals = np.array(res["residuals"])
         return plots.convergence({"Bellman residual": residuals}, logy=True,
-                                 title=title or f"{self.name} — value iteration",
+                                 title=title or f"{self.name} - value iteration",
                                  ylabel="‖TV − V‖∞")
 
     def __repr__(self) -> str:

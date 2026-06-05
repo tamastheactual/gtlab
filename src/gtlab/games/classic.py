@@ -41,4 +41,4 @@ def matching_pennies() -> ZeroSumGame:
 def rock_paper_scissors() -> ZeroSumGame:
     A = np.array([[0, -1, 1], [1, 0, -1], [-1, 1, 0]], dtype=float)
     labels = ["Rock", "Paper", "Scissors"]
-    return ZeroSumGame(A, labels, labels, name="Rock–Paper–Scissors")
+    return ZeroSumGame(A, labels, labels, name="Rock-Paper-Scissors")

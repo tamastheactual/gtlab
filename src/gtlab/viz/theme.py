@@ -91,7 +91,7 @@ def apply_rc(rc: dict | None = None) -> None:
 
 @contextmanager
 def rc_context(rc: dict | None = None):
-    """Scoped matplotlib styling — preferred over mutating global rcParams."""
+    """Scoped matplotlib styling - preferred over mutating global rcParams."""
     import matplotlib.pyplot as plt
 
     params = dict(RC_PARAMS)

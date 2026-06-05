@@ -134,37 +134,37 @@ class NormalFormGame:
               show_ne: bool = True, show_pareto: bool = True) -> None:
         """Annotated bimatrix: best responses underlined, NE outlined, Pareto starred."""
         body = self._solution_html(show_br, show_ne, show_pareto)
-        html.show(html.card(title or f"{self.name} — solution", body))
+        html.show(html.card(title or f"{self.name} - solution", body))
 
     def explain(self, title: Optional[str] = None) -> None:
         """Step-by-step walkthrough: best responses → pure NE → mixed NE."""
-        items = ["<b>Step 1 — Best responses.</b> Underlines mark each player's "
+        items = ["<b>Step 1 - Best responses.</b> Underlines mark each player's "
                  "best reply: row's to every column, column's to every row."]
         ne = self.pure_nash()
         if ne:
             cells = ", ".join(f"({self.row_actions[i]}, {self.col_actions[j]})"
                               for i, j in ne)
-            items.append(f"<b>Step 2 — Pure Nash equilibria.</b> Cells where both "
+            items.append(f"<b>Step 2 - Pure Nash equilibria.</b> Cells where both "
                          f"players' best responses coincide: {cells}.")
         else:
-            items.append("<b>Step 2 — Pure Nash equilibria.</b> None — no cell is a "
+            items.append("<b>Step 2 - Pure Nash equilibria.</b> None - no cell is a "
                          "mutual best response.")
         mixed = [(p, q) for p, q in self.equilibria()
                  if np.max(p) < 1 - 1e-9 or np.max(q) < 1 - 1e-9]
         if mixed:
             p, q = mixed[0]
-            items.append(f"<b>Step 3 — Mixed Nash equilibrium.</b> Row plays "
-                         f"{fmt_prob_vec(p)}; Column plays {fmt_prob_vec(q)} — each "
+            items.append(f"<b>Step 3 - Mixed Nash equilibrium.</b> Row plays "
+                         f"{fmt_prob_vec(p)}; Column plays {fmt_prob_vec(q)} - each "
                          "making the opponent indifferent across their support.")
         body = self._solution_html() + html.steps(items)
-        html.show(html.card(title or f"{self.name} — explanation", body))
+        html.show(html.card(title or f"{self.name} - explanation", body))
 
     def plot_br_map(self, title: Optional[str] = None):
         """Best-response heatmap (any size)."""
         br_row, br_col = self.best_responses()
         return plots.br_heatmap(br_row, br_col, solvers.ne_mask(self.A, self.B),
                                 self.row_actions, self.col_actions,
-                                title=title or f"{self.name} — best responses")
+                                title=title or f"{self.name} - best responses")
 
     # ── comparison ──────────────────────────────────────────────────────────
     @staticmethod

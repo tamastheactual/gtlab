@@ -1,4 +1,4 @@
-"""Core game classes — each holds data and delegates math/display to the
+"""Core game classes - each holds data and delegates math/display to the
 shared :mod:`gtlab.solvers` and :mod:`gtlab.viz` layers."""
 from .bayesian import (FirstPriceAuction, Mechanism, PostedPrice, Procurement,
                        PublicProject, SecondPriceAuction, SpenceSignaling,

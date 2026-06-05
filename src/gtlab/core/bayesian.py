@@ -115,7 +115,7 @@ class SecondPriceAuction(Mechanism):
         body = (f"<p>{self.n_bidders} bidders, values ~ U[{fmt(self.lo)}, {fmt(self.hi)}]</p>"
                 "<p><b>Weakly dominant strategy:</b> bid your true value.</p>"
                 f"<p><b>Expected revenue:</b> {fmt(sol['expected_revenue'])} "
-                "(equals the first-price auction — revenue equivalence).</p>")
+                "(equals the first-price auction - revenue equivalence).</p>")
         html.show(html.card(title or self.name, body))
 
 
@@ -160,7 +160,7 @@ class SpenceSignaling(Mechanism):
 
 @dataclass
 class VCGAssignment(Mechanism):
-    """VCG (Vickrey–Clarke–Groves) assignment of indivisible items to bidders.
+    """VCG (Vickrey-Clarke-Groves) assignment of indivisible items to bidders.
 
     ``V[i, j]`` is bidder ``i``'s value for item ``j``. The efficient allocation
     maximizes total welfare; each winner pays the externality it imposes on the
@@ -226,7 +226,7 @@ class VCGAssignment(Mechanism):
         rows = []
         for i in range(self.V.shape[0]):
             j = s["alloc"][i]
-            won = self.items[j] if j >= 0 else "—"
+            won = self.items[j] if j >= 0 else "-"
             rows.append([won, fmt_money(s["payments"][i]), fmt_money(s["utilities"][i])])
         tbl = html.table(["item won", "VCG payment", "utility"], rows,
                          row_headers=self.bidders)
@@ -242,7 +242,7 @@ class PublicProject(Mechanism):
 
     Build iff the sum of reported values covers the cost. A *pivotal* citizen
     (one whose presence flips the decision) pays the externality it imposes;
-    everyone else pays 0. Truthful, efficient, individually rational — but
+    everyone else pays 0. Truthful, efficient, individually rational - but
     generally runs a budget deficit (the impossibility trilemma).
     """
 

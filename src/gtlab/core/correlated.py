@@ -87,24 +87,24 @@ class CorrelatedGame:
         tbl = html.table(["concept", "E[row]", "E[col]", "welfare"], rows)
         body = tbl + html.note("welfare ordering: NE ≤ CE ≤ CCE (each relaxes the "
                                "deviation constraints of the previous).")
-        html.show(html.card(title or f"{self.name} — equilibrium concepts", body))
+        html.show(html.card(title or f"{self.name} - equilibrium concepts", body))
 
     def explain(self, title: Optional[str] = None) -> None:
         """Walkthrough: NE ⊆ CE ⊆ CCE, plus the no-regret learning connection."""
         items = [
-            "<b>Step 1 — Nash equilibrium.</b> Players randomize independently; "
+            "<b>Step 1 - Nash equilibrium.</b> Players randomize independently; "
             "their product distribution must be a mutual best response.",
-            "<b>Step 2 — Correlated equilibrium (CE).</b> A trusted device draws a "
+            "<b>Step 2 - Correlated equilibrium (CE).</b> A trusted device draws a "
             "joint action and privately recommends each player's part; obeying must "
             "be optimal given the conditional belief it induces.",
-            "<b>Step 3 — Coarse correlated equilibrium (CCE).</b> Players commit "
+            "<b>Step 3 - Coarse correlated equilibrium (CCE).</b> Players commit "
             "before seeing the recommendation; only ex-ante deviations are checked, "
             "so CCE ⊇ CE ⊇ NE.",
-            "<b>Step 4 — Learning.</b> If both players run a no-regret algorithm "
+            "<b>Step 4 - Learning.</b> If both players run a no-regret algorithm "
             "(see <code>plot_regret</code>), the empirical play converges to the CCE "
             "set (Hannan's theorem).",
         ]
-        html.show(html.card(title or f"{self.name} — equilibrium concepts",
+        html.show(html.card(title or f"{self.name} - equilibrium concepts",
                             html.steps(items)))
 
     def plot_regret(self, T: int = 2000, seed: int = 0, title: Optional[str] = None):
@@ -113,7 +113,7 @@ class CorrelatedGame:
         return plots.convergence(
             {"Row avg regret": res["avg_regret_row"],
              "Col avg regret": res["avg_regret_col"]},
-            target=0.0, title=title or f"{self.name} — no-regret learning",
+            target=0.0, title=title or f"{self.name} - no-regret learning",
             ylabel="average regret")
 
     def __repr__(self) -> str:

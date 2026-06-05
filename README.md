@@ -1,4 +1,4 @@
-# gtlab — Game Theory Lab
+# gtlab - Game Theory Lab
 
 [![CI](https://github.com/tamastheactual/gtlab/actions/workflows/ci.yml/badge.svg)](https://github.com/tamastheactual/gtlab/actions/workflows/ci.yml)
 [![PyPI](https://img.shields.io/pypi/v/gtlab.svg)](https://pypi.org/project/gtlab/)
@@ -49,18 +49,18 @@ notebooks:
 
 ```text
 gtlab/
-├── core/      game classes — hold data, expose a thin API
+├── core/      game classes - hold data, expose a thin API
 │   ├── normal_form.py      NormalFormGame
 │   ├── zero_sum.py         ZeroSumGame
 │   ├── correlated.py       CorrelatedGame
 │   ├── stochastic.py       StochasticGame
 │   ├── extensive_form.py   ExtensiveFormGame
 │   └── bayesian.py         PostedPrice, FirstPriceAuction, SecondPriceAuction
-├── solvers/   pure algorithms — numpy in, numpy/dict out, no display
+├── solvers/   pure algorithms - numpy in, numpy/dict out, no display
 │   ├── best_response.py    nash.py          dominance.py
 │   ├── pareto.py           linprog.py       value_iteration.py
 │   ├── welfare.py          learning.py      correlated.py
-├── viz/       display layer — ONE theme, formatters, HTML, plots
+├── viz/       display layer - ONE theme, formatters, HTML, plots
 │   ├── theme.py  format.py  html.py  plots.py
 └── games/     ready-made example games + REGISTRY
 ```

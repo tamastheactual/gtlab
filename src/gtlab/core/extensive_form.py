@@ -113,21 +113,21 @@ class ExtensiveFormGame:
         return html.kv([("SPE payoff", fmt_vec(res["value"]))]) + tbl
 
     def solve(self, title: Optional[str] = None) -> None:
-        html.show(html.card(title or f"{self.name} — backward induction",
+        html.show(html.card(title or f"{self.name} - backward induction",
                             self._solution_html()))
 
     def explain(self, title: Optional[str] = None) -> None:
         res = self.backward_induction()
         items = [
-            "<b>Step 1 — Start at the leaves.</b> Terminal nodes already carry payoffs.",
-            "<b>Step 2 — Fold the tree.</b> At each decision node the acting player "
+            "<b>Step 1 - Start at the leaves.</b> Terminal nodes already carry payoffs.",
+            "<b>Step 2 - Fold the tree.</b> At each decision node the acting player "
             "picks the action leading to the child with the highest payoff <i>for "
             "them</i>; that child's payoff vector propagates up.",
-            f"<b>Step 3 — Read the root.</b> The resulting subgame-perfect equilibrium "
+            f"<b>Step 3 - Read the root.</b> The resulting subgame-perfect equilibrium "
             f"yields payoff {fmt_vec(res['value'])} (chosen actions tabulated above).",
         ]
         body = self._solution_html() + html.steps(items)
-        html.show(html.card(title or f"{self.name} — backward induction", body))
+        html.show(html.card(title or f"{self.name} - backward induction", body))
 
     def __repr__(self) -> str:
         return f"ExtensiveFormGame({self.name!r}, nodes={len(self.tree)})"

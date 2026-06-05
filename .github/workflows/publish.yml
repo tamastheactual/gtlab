@@ -1,6 +1,6 @@
 name: Publish
 
-# Trusted publishing (PyPI OIDC) — no API tokens stored in the repo.
+# Trusted publishing (PyPI OIDC) - no API tokens stored in the repo.
 # Register the "pending publisher" on the index website first (see PUBLISHING.md):
 #   workflow filename: publish.yml
 #   environment name:  testpypi  (for TestPyPI)  /  pypi  (for PyPI)

@@ -1,4 +1,4 @@
-"""gtlab — Game Theory Lab for the ELTE Game Theory course.
+"""gtlab - Game Theory Lab for the ELTE Game Theory course.
 
 Quick start::
 
@@ -16,10 +16,10 @@ Build your own::
     g.explain()
 
 Layers:
-  * ``gtlab.core``    — game classes (data + thin API)
-  * ``gtlab.solvers`` — pure algorithms (best response, Nash, value iteration, …)
-  * ``gtlab.viz``     — formatting, HTML, plots, theme
-  * ``gtlab.games``   — ready-made example games
+  * ``gtlab.core``    - game classes (data + thin API)
+  * ``gtlab.solvers`` - pure algorithms (best response, Nash, value iteration, …)
+  * ``gtlab.viz``     - formatting, HTML, plots, theme
+  * ``gtlab.games``   - ready-made example games
 """
 from . import games, solvers, viz
 from .core import (CorrelatedGame, ExtensiveFormGame, FirstPriceAuction,

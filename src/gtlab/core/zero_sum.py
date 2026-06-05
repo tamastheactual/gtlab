@@ -38,7 +38,7 @@ class ZeroSumGame:
 
     @cached_method
     def solve_value(self) -> dict:
-        """Return ``{"p", "q", "value"}`` — optimal mixes and game value."""
+        """Return ``{"p", "q", "value"}`` - optimal mixes and game value."""
         return solvers.solve_zero_sum(self.A)
 
     @cached_method
@@ -73,7 +73,7 @@ class ZeroSumGame:
 
     def solve(self, title: Optional[str] = None) -> None:
         """Show the value and optimal mixed strategies."""
-        html.show(html.card(title or f"{self.name} — minimax solution",
+        html.show(html.card(title or f"{self.name} - minimax solution",
                             self._solution_html()))
 
     def explain(self, title: Optional[str] = None) -> None:
@@ -82,19 +82,19 @@ class ZeroSumGame:
         if saddles:
             cells = ", ".join(f"({self.row_actions[i]}, {self.col_actions[j]})"
                               for i, j in saddles)
-            items.append(f"<b>Step 1 — Pure saddle point(s):</b> {cells}. "
+            items.append(f"<b>Step 1 - Pure saddle point(s):</b> {cells}. "
                          "Here maximin equals minimax already in pure strategies.")
         else:
-            items.append("<b>Step 1 — No pure saddle point</b> — maximin &lt; minimax, "
+            items.append("<b>Step 1 - No pure saddle point</b> - maximin &lt; minimax, "
                          "so the value is achieved only in mixed strategies.")
-        items.append("<b>Step 2 — Minimax value.</b> Linear programming gives the "
+        items.append("<b>Step 2 - Minimax value.</b> Linear programming gives the "
                      "value v and the optimal mixes shown above.")
         cert = self.verify()
-        items.append("<b>Step 3 — Complementary slackness:</b> "
-                     + ("verified ✓ — every action in the support earns exactly v."
+        items.append("<b>Step 3 - Complementary slackness:</b> "
+                     + ("verified ✓ - every action in the support earns exactly v."
                         if cert["valid"] else "not satisfied."))
         body = self._solution_html() + html.steps(items)
-        html.show(html.card(title or f"{self.name} — explanation", body))
+        html.show(html.card(title or f"{self.name} - explanation", body))
 
     def plot_convergence(self, T: int = 500, seed: int = 0, title: Optional[str] = None):
         """Show empirical average payoff under repeated optimal play converging to v."""
@@ -108,7 +108,7 @@ class ZeroSumGame:
             rewards.append(self.A[a, b])
         cesaro = np.cumsum(rewards) / np.arange(1, T + 1)
         return plots.convergence({"Cesàro average": cesaro}, target=s["value"],
-                                 title=title or f"{self.name} — convergence to value",
+                                 title=title or f"{self.name} - convergence to value",
                                  ylabel="average payoff")
 
     @staticmethod

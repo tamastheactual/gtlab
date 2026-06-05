@@ -1,6 +1,6 @@
 # Publishing `gtlab`
 
-Releases use **PyPI trusted publishing** (OIDC) via GitHub Actions — no API
+Releases use **PyPI trusted publishing** (OIDC) via GitHub Actions - no API
 tokens are stored anywhere. The flow is: register a one-time "pending publisher"
 on the index website, then trigger the workflow.
 
@@ -58,7 +58,7 @@ pip install gtlab
 
 ## Notes
 
-- A given version can be uploaded **only once** per index — bump the version
+- A given version can be uploaded **only once** per index - bump the version
   for any re-release.
 - `python -m build && twine check dist/*` reproduces the workflow's build step
   locally if you want to inspect artifacts first.

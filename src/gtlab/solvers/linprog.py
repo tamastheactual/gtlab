@@ -16,7 +16,7 @@ def solve_zero_sum(M: np.ndarray) -> Dict[str, Any]:
     """Solve a two-player zero-sum matrix game by linear programming.
 
     ``M`` is the row player's payoff matrix (column player gets ``-M``).
-    Returns ``{"p", "q", "value"}`` — optimal row mix, column mix, game value.
+    Returns ``{"p", "q", "value"}`` - optimal row mix, column mix, game value.
     """
     from scipy.optimize import linprog
 

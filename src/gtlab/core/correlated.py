@@ -75,7 +75,19 @@ class CorrelatedGame:
     def _mu_table(self, mu: np.ndarray) -> str:
         m, n = self.shape
         rows = [[fmt(mu[i, j]) for j in range(n)] for i in range(m)]
-        return html.table(self.col_actions, rows, row_headers=self.row_actions)
+        return (html.table(self.col_actions, rows, row_headers=self.row_actions)
+                + html.note("cells = P(row, col)"))
+
+    def _mu_sum_guard(self, mu: np.ndarray, tol: float = 1e-9):
+        """Normalize ``mu`` to sum 1 if it does not, returning ``(note, mu)``.
+
+        ``note`` is an HTML prefix (empty if no normalization was needed) so
+        verification displays warn before reporting on a renormalized table.
+        """
+        total = float(mu.sum())
+        if abs(total - 1.0) > tol and total != 0.0:
+            return html.note("mu did not sum to 1; normalized for display"), mu / total
+        return "", mu
 
     def summary(self, title: Optional[str] = None) -> None:
         ce = self.find_ce()
@@ -94,12 +106,13 @@ class CorrelatedGame:
         ce = self.find_ce()
         cce = self.find_cce()
         rows = []
-        nash = self.nash()
-        if nash:
-            p, q = nash[0]
-            eu_r = float(p @ self.A @ q)
-            eu_c = float(p @ self.B @ q)
-            rows.append(["Nash", fmt(eu_r), fmt(eu_c), fmt(eu_r + eu_c)])
+        payoffs = self._nash_payoffs()
+        if payoffs:
+            # Use the WELFARE-MAXIMIZING NE so the comparison is apples-to-apples
+            # with the welfare-maximizing CE / CCE rows (picking an arbitrary NE
+            # would fabricate a misleading "correlation improves welfare" gap).
+            eu_r, eu_c = max(payoffs, key=lambda pc: pc[0] + pc[1])
+            rows.append(["max-welfare NE", fmt(eu_r), fmt(eu_c), fmt(eu_r + eu_c)])
         if ce:
             rows.append(["CE", fmt(ce["eu_row"]), fmt(ce["eu_col"]), fmt(ce["welfare"])])
         if cce:
@@ -130,37 +143,44 @@ class CorrelatedGame:
     def verify_ce(self, mu: np.ndarray, title: Optional[str] = None) -> None:
         """Constraint-by-constraint check that ``mu`` is a correlated equilibrium."""
         mu = np.asarray(mu, dtype=float)
-        m, n = self.shape
+        body, mu = self._mu_sum_guard(mu)
         eu_row = float((mu * self.A).sum())
         eu_col = float((mu * self.B).sum())
         detail = ce_obedience_detail(self.A, self.B, mu)
 
-        body = "<b>Input distribution &mu;</b>" + self._mu_table(mu)
+        body += "<b>Input distribution &mu;</b>" + self._mu_table(mu)
         body += html.note(f"E[row] = {fmt(eu_row)}, E[col] = {fmt(eu_col)}, "
                           f"welfare = {fmt(eu_row + eu_col)}")
         rows, classes = [], []
         for d in detail:
             if d["player"] == "row":
                 who, told, dev = self.row_name, self.row_actions[d["told"]], self.row_actions[d["deviation"]]
+                p_told = float(mu[d["told"], :].sum())
             else:
                 who, told, dev = self.col_name, self.col_actions[d["told"]], self.col_actions[d["deviation"]]
+                p_told = float(mu[:, d["told"]].sum())
+            if abs(p_told) < 1e-9:
+                told += " (never recommended, p=0)"
             mark = "ok" if d["ok"] else "x"
             rows.append([who, told, dev, fmt(d["gain"]), mark])
-            classes.append(["", "", "", "", "gt-ne" if d["ok"] else "gt-col"])
+            classes.append(["", "", "", "", "gt-ok" if d["ok"] else "gt-bad"])
         tbl = html.table(["player", "told", "deviate to", "E[gain from obeying]", ""],
                          rows, cell_classes=classes)
         ok = all(d["ok"] for d in detail)
         verdict = "Valid CE: every obedience constraint holds." if ok else \
                   "Not a CE: at least one obedience constraint is violated."
-        body += "<b>Obedience constraints</b>" + tbl + html.note(verdict)
+        body += "<b>Obedience constraints</b>" + tbl
+        body += html.note("green = obeys / no profitable deviation, red = violation")
+        body += html.note(verdict)
         html.show(html.card(title or f"{self.name} - CE verification", body))
 
     def verify_cce(self, mu: np.ndarray, title: Optional[str] = None) -> None:
         """Constraint-by-constraint check that ``mu`` is a coarse correlated equilibrium."""
         mu = np.asarray(mu, dtype=float)
+        body, mu = self._mu_sum_guard(mu)
         rep = cce_exante_detail(self.A, self.B, mu)
 
-        body = "<b>Input distribution &mu;</b>" + self._mu_table(mu)
+        body += "<b>Input distribution &mu;</b>" + self._mu_table(mu)
         body += html.note(f"E[row] = {fmt(rep['eu_row'])}, E[col] = {fmt(rep['eu_col'])}")
         body += html.note("A CCE requires no player gains by committing to a fixed "
                           "action before the signal (ex-ante deviation).")
@@ -172,12 +192,14 @@ class CorrelatedGame:
                 who, dev = self.col_name, self.col_actions[d["deviation"]]
             mark = "ok" if d["ok"] else "x"
             rows.append([who, dev, fmt(d["dev_payoff"]), fmt(d["current"]), fmt(d["gain"]), mark])
-            classes.append(["", "", "", "", "", "gt-ne" if d["ok"] else "gt-col"])
+            classes.append(["", "", "", "", "", "gt-ok" if d["ok"] else "gt-bad"])
         tbl = html.table(["player", "deviate to", "deviation payoff", "current", "gain", ""],
                          rows, cell_classes=classes)
         verdict = "Valid CCE: no profitable ex-ante deviation." if rep["ok"] else \
                   "Not a CCE: a profitable ex-ante deviation exists."
-        body += "<b>Ex-ante deviation constraints</b>" + tbl + html.note(verdict)
+        body += "<b>Ex-ante deviation constraints</b>" + tbl
+        body += html.note("green = obeys / no profitable deviation, red = violation")
+        body += html.note(verdict)
         html.show(html.card(title or f"{self.name} - CCE verification", body))
 
     def lp_detail(self, title: Optional[str] = None) -> None:
@@ -186,19 +208,19 @@ class CorrelatedGame:
         cce = self.find_cce()
 
         formulation = html.steps([
-            "<b>Variables.</b> A joint distribution &mu;<sub>ij</sub> &ge; 0 over action "
+            "<b>Variables.</b> A joint distribution &mu;<sub>ij</sub> ≥ 0 over action "
             "profiles, with &sum;<sub>ij</sub> &mu;<sub>ij</sub> = 1.",
             "<b>Objective.</b> max<sub>&mu;</sub> &sum;<sub>ij</sub> &mu;<sub>ij</sub> "
             "(A<sub>ij</sub> + B<sub>ij</sub>) (social welfare; row/col variants swap "
             "the objective).",
             "<b>CE - obedience.</b> &sum;<sub>j</sub> &mu;<sub>ij</sub> "
-            "(A<sub>ij</sub> - A<sub>i'j</sub>) &ge; 0 for every i, i' (and the column "
+            "(A<sub>ij</sub> - A<sub>i'j</sub>) ≥ 0 for every i, i' (and the column "
             "analogue): obeying a private recommendation is optimal.",
             "<b>CCE - ex-ante.</b> &sum;<sub>ij</sub> &mu;<sub>ij</sub> "
-            "(A<sub>ij</sub> - A<sub>i'j</sub>) &ge; 0 for every i' (one constraint per "
+            "(A<sub>ij</sub> - A<sub>i'j</sub>) ≥ 0 for every i' (one constraint per "
             "alternative action): a single up-front deviation is not profitable.",
             "Each is a linear program over a convex polytope; CCE relaxes CE's "
-            "per-recommendation constraints into one ex-ante constraint, so CE &sube; CCE.",
+            "per-recommendation constraints into one ex-ante constraint, so CE ⊆ CCE.",
         ])
         body = "<b>Linear program</b>" + formulation
 
@@ -211,7 +233,7 @@ class CorrelatedGame:
             rows.append(["max-welfare CCE", fmt(cce["eu_row"]), fmt(cce["eu_col"]), fmt(cce["welfare"])])
         tbl = html.table(["solution concept", "E[row]", "E[col]", "welfare"], rows)
         body += "<b>Welfare comparison</b>" + tbl
-        body += html.note("welfare ordering: NE <= CE <= CCE (each relaxes the "
+        body += html.note("welfare ordering: NE ≤ CE ≤ CCE (each relaxes the "
                           "deviation constraints of the previous).")
         html.show(html.card(title or f"{self.name} - LP for CE / CCE", body))
 

@@ -6,7 +6,7 @@ matplotlib.use("Agg")
 import numpy as np
 from matplotlib.figure import Figure
 
-from gtlab.core.stochastic import CheapTalkGame, GeneralSumSG, StochasticGame
+from gtlab.core.stochastic import CheapTalkGame, StochasticGame
 from gtlab.games.stochastic import (market_entry_general_sum, patrol_game,
                                      security_game)
 from gtlab.solvers.stochastic_extra import (bayesian_update, best_response_iteration,

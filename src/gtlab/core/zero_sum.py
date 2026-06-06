@@ -108,9 +108,17 @@ class ZeroSumGame:
         s = self.solve_value()
         return html.kv([
             ("Game value", f"v = {fmt(s['value'])}"),
-            ('<span class="gt-row">Row</span> plays', fmt_prob_vec(s["p"])),
-            ('<span class="gt-col">Column</span> plays', fmt_prob_vec(s["q"])),
+            (f'<span class="gt-row">{self.row_name}</span> plays', fmt_prob_vec(s["p"])),
+            (f'<span class="gt-col">{self.col_name}</span> plays', fmt_prob_vec(s["q"])),
         ])
+
+    def _player_legend(self) -> str:
+        """Corner caption naming the axes and the (blue, red) payoff colors."""
+        return html.legend(
+            f'rows = <span class="gt-row">{self.row_name}</span>',
+            f'columns = <span class="gt-col">{self.col_name}</span>',
+            '(<span class="gt-row">blue = row payoff</span>, '
+            '<span class="gt-col">red = col payoff</span>)')
 
     def _bimatrix_html(self) -> str:
         """Payoff table showing (a, -a) pairs with player labels."""
@@ -123,7 +131,8 @@ class ZeroSumGame:
                 row.append(f'(<span class="gt-row">{fmt(a)}</span>, '
                            f'<span class="gt-col">{fmt(-a)}</span>)')
             rows.append(row)
-        return html.table(self.col_actions, rows, row_headers=self.row_actions)
+        return (html.table(self.col_actions, rows, row_headers=self.row_actions)
+                + self._player_legend())
 
     def summary(self, title: Optional[str] = None) -> None:
         saddle = self.pure_saddle_points()
@@ -193,12 +202,12 @@ class ZeroSumGame:
         Aq, ATp = self.A @ q, self.A.T @ p
 
         parts = [html.kv([
-            ("Primal (Row, maximizer)",
+            (f"Primal ({self.row_name}, maximizer)",
              "max v &nbsp; s.t. A<sup>T</sup>p &ge; v, &nbsp; 1<sup>T</sup>p = 1, &nbsp; p &ge; 0"),
-            ("Dual (Column, minimizer)",
+            (f"Dual ({self.col_name}, minimizer)",
              "min v &nbsp; s.t. Aq &le; v, &nbsp; 1<sup>T</sup>q = 1, &nbsp; q &ge; 0"),
         ])]
-        parts.append(self._matrix_html())
+        parts.append(self._matrix_html() + self._player_legend())
 
         sol_rows = [
             [fmt_prob_vec(p)], [fmt_prob_vec(q)], [fmt(v)],
@@ -213,7 +222,7 @@ class ZeroSumGame:
             ok = lhs >= v - 1e-8
             slack = lhs - v
             tag = "tight" if abs(slack) < 1e-8 else f"slack {fmt(slack)}"
-            prim.append(f"<b>{self.col_actions[j]}</b>: (A<sup>T</sup>p*)<sub>j</sub> "
+            prim.append(f"<b>{self.col_actions[j]}</b>: (A<sup>T</sup>p*)<sub>{self.col_actions[j]}</sub> "
                         f"= {fmt(lhs)} {'&ge;' if ok else '&lt;'} v = {fmt(v)} ({tag}) "
                         f"{'&#10003;' if ok else '&#10007;'}")
         # Dual constraints: A q <= v.
@@ -223,7 +232,7 @@ class ZeroSumGame:
             ok = lhs <= v + 1e-8
             slack = v - lhs
             tag = "tight" if abs(slack) < 1e-8 else f"slack {fmt(slack)}"
-            dual.append(f"<b>{self.row_actions[i]}</b>: (Aq*)<sub>i</sub> "
+            dual.append(f"<b>{self.row_actions[i]}</b>: (Aq*)<sub>{self.row_actions[i]}</sub> "
                         f"= {fmt(lhs)} {'&le;' if ok else '&gt;'} v = {fmt(v)} ({tag}) "
                         f"{'&#10003;' if ok else '&#10007;'}")
 
@@ -349,9 +358,35 @@ class ZeroSumGame:
                     items.append(f'<span class="gt-col"><b>{self.col_actions[j]}</b></span> '
                                  f"is strictly dominated by <b>{self.col_actions[j2]}</b> "
                                  f"for {self.col_name}: Row payoffs [{comp}]")
+        # Mixture dominance for columns. Column MINIMIZES Row's payoff, so
+        # column j is dominated if some mixture of two other columns yields a
+        # Row payoff <= A[:, j] - 1e-10 in every row.
+        if n >= 3:
+            for j in range(n):
+                others = [k for k in range(n) if k != j]
+                done = False
+                for a in range(len(others)):
+                    for b in range(a + 1, len(others)):
+                        j1, j2 = others[a], others[b]
+                        for alpha in (0.25, 0.5, 0.75):
+                            mix = alpha * self.A[:, j1] + (1 - alpha) * self.A[:, j2]
+                            if np.all(mix <= self.A[:, j] - 1e-10):
+                                comp = ", ".join(f"{fmt(self.A[i, j])} vs {fmt(mix[i])}"
+                                                 for i in range(m))
+                                items.append(
+                                    f'<span class="gt-col"><b>{self.col_actions[j]}</b></span> '
+                                    f"is dominated by {fmt(alpha)}&middot;{self.col_actions[j1]} "
+                                    f"+ {fmt(1 - alpha)}&middot;{self.col_actions[j2]} "
+                                    f"for {self.col_name}: Row payoffs [{comp}]")
+                                done = True
+                                break
+                        if done:
+                            break
+                    if done:
+                        break
 
         if not items:
-            items.append("No strictly dominated pure actions found.")
+            items.append("No dominated actions found (pure or mixed).")
         html.show(html.card(title or f"{self.name} - dominance",
                             html.steps(items)))
 
@@ -375,10 +410,12 @@ class ZeroSumGame:
         p_unif = np.ones(m) / m
         q_unif = np.ones(n) / n
         rows = []
+        eps_by_delta = []
         for delta in (0.0, 0.05, 0.1, 0.2):
             p_d = (1 - delta) * p + delta * p_unif
             q_d = (1 - delta) * q + delta * q_unif
             e = epsilon_security(self.A, p_d, q_d, v)
+            eps_by_delta.append(e["eps_max"])
             rows.append([fmt(delta), fmt_prob_vec(p_d), fmt_prob_vec(q_d),
                          fmt(e["eps_row"], 6), fmt(e["eps_col"], 6),
                          fmt(e["eps_max"], 6)])
@@ -387,10 +424,15 @@ class ZeroSumGame:
              "&epsilon;<sub>row</sub>", "&epsilon;<sub>col</sub>", "&epsilon;"],
             rows)
 
-        note = html.note("A pair (p, q) is &epsilon;-secure if neither player gains "
-                         "more than &epsilon; by best-responding. p<sub>&delta;</sub> "
-                         "and q<sub>&delta;</sub> blend the optimum toward uniform; "
-                         "&epsilon; grows with &delta;.")
+        # Perturbing a uniform optimum (e.g. Matching Pennies / RPS) leaves the
+        # mixes unchanged, so epsilon stays 0; only claim growth when it occurs.
+        grows = eps_by_delta[-1] > eps_by_delta[0] + 1e-9
+        note_text = ("A pair (p, q) is &epsilon;-secure if neither player gains "
+                     "more than &epsilon; by best-responding. p<sub>&delta;</sub> "
+                     "and q<sub>&delta;</sub> blend the optimum toward uniform"
+                     + ("; &epsilon; grows with &delta;." if grows else
+                        ". Here the optimum is already uniform, so &epsilon; stays 0."))
+        note = html.note(note_text)
         html.show(html.card(title or f"{self.name} - security analysis",
                             head + note + pert))
 

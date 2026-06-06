@@ -104,16 +104,27 @@ class NormalFormGame:
     # ── display (delegates to viz) ───────────────────────────────────────────
     def _matrix_html(self, show_br: bool = False, show_ne: bool = False,
                      show_pareto: bool = False, show_dominated: bool = False,
-                     show_heatmap: bool = False) -> str:
-        """Build the (optionally annotated) bimatrix table as an HTML string."""
+                     show_heatmap: bool = False,
+                     dom_rows: Optional[set] = None,
+                     dom_cols: Optional[set] = None) -> str:
+        """Build the (optionally annotated) bimatrix table as an HTML string.
+
+        When ``show_dominated`` is set, the struck-through cells come from
+        explicit ``dom_rows``/``dom_cols`` index sets if given, otherwise from
+        first-round :meth:`dominated`.
+        """
         m, n = self.shape
         br_row, br_col = self.best_responses() if show_br else (None, None)
         ne = set(self.pure_nash()) if show_ne else set()
         pareto = set(self.pareto_optimal()) if show_pareto else set()
-        dom_rows, dom_cols = (set(), set())
-        if show_dominated:
+        if not show_dominated:
+            dom_rows, dom_cols = set(), set()
+        elif dom_rows is None and dom_cols is None:
             dr, dc = self.dominated()
             dom_rows, dom_cols = set(dr.keys()), set(dc.keys())
+        else:
+            dom_rows = set(dom_rows or ())
+            dom_cols = set(dom_cols or ())
         rows, classes = [], []
         for i in range(m):
             r, c = [], []
@@ -149,8 +160,12 @@ class NormalFormGame:
     def _solution_html(self, show_br=True, show_ne=True, show_pareto=True,
                        show_dominated=False, show_heatmap=False,
                        show_arrows=False, show_mixed=False) -> str:
+        # When every cell is Pareto-optimal (e.g. zero-sum games) the stars carry
+        # no information, so suppress them and explain why with a note instead.
+        all_pareto = show_pareto and len(self.pareto_optimal()) == self.A.size
+        star_pareto = show_pareto and not all_pareto
         tbl = self._matrix_html(show_br=show_br, show_ne=show_ne,
-                                show_pareto=show_pareto,
+                                show_pareto=star_pareto,
                                 show_dominated=show_dominated,
                                 show_heatmap=show_heatmap)
         legend_parts = []
@@ -158,13 +173,15 @@ class NormalFormGame:
             legend_parts.append("underline = best response")
         if show_ne:
             legend_parts.append("green outline = Nash equilibrium")
-        if show_pareto:
+        if star_pareto:
             legend_parts.append("star = Pareto optimal")
         if show_dominated:
             legend_parts.append("strikethrough = strictly dominated")
         body = tbl + self._player_legend()
         if legend_parts:
             body += html.legend(*legend_parts)
+        if all_pareto:
+            body += html.note("all outcomes are Pareto-optimal")
         if show_arrows:
             body += self._arrows_html()
         if show_mixed:
@@ -266,6 +283,28 @@ class NormalFormGame:
             items.append(f"<b>Step 3 - Mixed Nash equilibrium.</b> Row plays "
                          f"{fmt_prob_vec(p)}; Column plays {fmt_prob_vec(q)} - each "
                          "making the opponent indifferent across their support.")
+        # Efficiency step: name the Pareto-optimal outcomes and relate them to NE.
+        pareto = self.pareto_optimal()
+        all_pareto = len(pareto) == self.A.size
+        step = len(items) + 1
+        if all_pareto:
+            items.append(f"<b>Step {step} - Efficiency.</b> Every outcome is "
+                         "Pareto-optimal, so no profile is unambiguously better "
+                         "for both players.")
+        else:
+            cells = ", ".join(f"({self.row_actions[i]}, {self.col_actions[j]})"
+                              for i, j in pareto)
+            eff = f"<b>Step {step} - Efficiency.</b> Pareto-optimal outcomes: {cells}."
+            if ne:
+                pareto_set = set(pareto)
+                eff_ne = [c for c in ne if c in pareto_set]
+                if not eff_ne:
+                    eff += " The Nash equilibrium is not Pareto-optimal."
+                elif len(eff_ne) == len(ne):
+                    eff += " The Nash equilibrium is Pareto-optimal."
+                else:
+                    eff += " Some Nash equilibria are Pareto-optimal."
+            items.append(eff)
         body = self._solution_html() + html.steps(items)
         html.show(html.card(title or f"{self.name} - explanation", body))
 
@@ -293,7 +332,16 @@ class NormalFormGame:
             items.append(f"<b>Reduced game.</b> {len(rows)}x{len(cols)} remains: "
                          f"{self.row_name} in {{{', '.join(rows)}}}, "
                          f"{self.col_name} in {{{', '.join(cols)}}}.")
-        body = self._matrix_html(show_dominated=True) + html.steps(items)
+        # Strike through every strategy eliminated across ALL rounds (not just the
+        # first), mapping the logged labels back to original matrix indices so the
+        # overlay agrees with the narrated walkthrough.
+        row_index = {lbl: i for i, lbl in enumerate(self.row_actions)}
+        col_index = {lbl: j for j, lbl in enumerate(self.col_actions)}
+        dom_rows = {row_index[s["removed"]] for s in log if s["player"] == "row"}
+        dom_cols = {col_index[s["removed"]] for s in log if s["player"] == "col"}
+        body = (self._matrix_html(show_dominated=True,
+                                  dom_rows=dom_rows, dom_cols=dom_cols)
+                + html.steps(items))
         html.show(html.card(title or f"{self.name} - IESDS", body))
 
     def plot_br_map(self, title: Optional[str] = None):

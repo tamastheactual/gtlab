@@ -137,7 +137,7 @@ def strictly_dominated_rows(A: np.ndarray) -> Dict[int, List[int]]:
     dom: Dict[int, List[int]] = {}
     for i in range(A.shape[0]):
         for j in range(A.shape[0]):
-            if i != j and np.all(A[i] <= A[j]) and np.any(A[i] < A[j]):
+            if i != j and np.all(A[i] < A[j] - 1e-12):
                 dom.setdefault(i, []).append(j)
                 break
     return dom
@@ -147,7 +147,7 @@ def strictly_dominated_cols(B: np.ndarray) -> Dict[int, List[int]]:
     dom: Dict[int, List[int]] = {}
     for i in range(B.shape[1]):
         for j in range(B.shape[1]):
-            if i != j and np.all(B[:, i] <= B[:, j]) and np.any(B[:, i] < B[:, j]):
+            if i != j and np.all(B[:, i] < B[:, j] - 1e-12):
                 dom.setdefault(i, []).append(j)
                 break
     return dom

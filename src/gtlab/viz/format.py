@@ -23,6 +23,9 @@ def fmt(x: float, prec: int = 4) -> str:
     if abs(xf - round(xf)) < EPS:
         return str(int(round(xf)))
     s = f"{xf:.{prec}f}".rstrip("0").rstrip(".")
+    # Snap a value that rounds to zero at display precision to "0" (avoids "-0").
+    if s in ("-0", "0", "-0.", "0."):
+        return "0"
     return s
 
 

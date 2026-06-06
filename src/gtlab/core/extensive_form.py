@@ -147,6 +147,13 @@ class ExtensiveFormGame:
     def _has_imperfect_info(self) -> bool:
         return any(len(v) > 1 for v in self.info_sets.values())
 
+    @staticmethod
+    def _imperfect_info_note() -> str:
+        return html.note(
+            "This game has non-trivial information sets; backward induction "
+            "assumes perfect information - the result below may not be a valid "
+            "SPE. Use solve_nf() for the normal-form analysis.")
+
     # ── backward induction ───────────────────────────────────────────────────
     @cached_method
     def backward_induction(self, tol: float = 1e-9) -> Dict[str, Any]:
@@ -296,11 +303,18 @@ class ExtensiveFormGame:
 
     def show_dataframe(self, df, title: Optional[str] = None) -> None:
         """Render a pandas DataFrame as an HTML card/table."""
+        def _cell(v):
+            if isinstance(v, tuple):
+                return ", ".join(_cell(x) for x in v)
+            if isinstance(v, (int, float, np.floating, np.integer)):
+                return fmt(v)
+            return str(v)
         html.show(html.card(
             title or "",
             html.table([str(c) for c in df.columns],
-                       [[str(v) for v in row]
-                        for row in df.values.tolist()])))
+                       [[_cell(v) for v in row]
+                        for row in df.values.tolist()],
+                       row_headers=[str(ix) for ix in df.index])))
 
     def is_zero_sum(self, tol: float = 1e-9) -> bool:
         if len(self.players) != 2:
@@ -418,6 +432,8 @@ class ExtensiveFormGame:
             "above).",
         ]
         body = self._solution_html() + html.steps(items)
+        if self._has_imperfect_info():
+            body = self._imperfect_info_note() + body
         html.show(html.card(title or f"{self.name} - backward induction", body))
 
     def _solution_html(self) -> str:
@@ -440,8 +456,11 @@ class ExtensiveFormGame:
         """
         res = self.backward_induction()
         if _display_result:
+            body = self._solution_html()
+            if self._has_imperfect_info():
+                body = self._imperfect_info_note() + body
             html.show(html.card(title or f"{self.name} - backward induction",
-                                self._solution_html()))
+                                body))
         return {"payoffs": res["value"],
                 "spe_strategies": res["strategy"],
                 "spe_all_actions": res["all_actions"]}
@@ -517,7 +536,7 @@ class ExtensiveFormGame:
         legend = ["underline = best response",
                   "green outline = Nash equilibrium",
                   "star = Pareto optimal",
-                  "strikethrough = dominated"]
+                  "strikethrough = strictly dominated"]
         body += html.legend(*legend)
         if show_mixed:
             A, B = nf["A"], nf["B"]

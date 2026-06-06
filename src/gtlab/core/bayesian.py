@@ -164,7 +164,7 @@ class PostedPrice(Mechanism):
         sol = self.solve()
         thr = posted_price_threshold(self.values)
         rev_items = []
-        for v in self.values:
+        for v in self._candidate_prices():
             r = self.expected_revenue(float(v))
             tag = " (optimum)" if abs(float(v) - sol["optimal_price"]) < 1e-9 else ""
             rev_items.append(f"p = {fmt_money(v)}: E[R] = {fmt_money(r)}{tag}")
@@ -1007,11 +1007,11 @@ class EntryGame(Mechanism):
         pw, ps = self.payoff_weak, self.payoff_strong
         rows = [
             [fmt(pw[0]), fmt(ps[0]), fmt(self.stay_out)],
-            [fmt(pw[1]), fmt(ps[1]), "-"],
+            [fmt(pw[1]), fmt(ps[1]), "n/a"],
         ]
         tbl = html.table(["Weak incumbent", "Strong incumbent", "Stay out"], rows,
                          row_headers=[f"{self.entrant_name} payoff",
-                                      f"{self.incumbent_name} payoff"])
+                                      f"{self.incumbent_name} payoff (if entry)"])
         body = (tbl + f"<p>Prior: Pr(Strong) = <b>{fmt_prob(self.prior_strong)}</b>, "
                 f"Pr(Weak) = <b>{fmt_prob(1 - self.prior_strong)}</b>.</p>")
         html.show(html.card(title or self.name, body))
@@ -1019,9 +1019,10 @@ class EntryGame(Mechanism):
     def explain(self, title: Optional[str] = None) -> None:
         s = self.solve()
         steps = [
-            "<b>Incumbent's type-contingent strategy.</b> The weak incumbent "
-            "prefers to accommodate, the strong incumbent prefers to fight; each "
-            "plays her weakly dominant action given her type.",
+            "<b>Incumbent's type-contingent strategy (assumed).</b> We take as "
+            "given that the weak incumbent accommodates and the strong incumbent "
+            "fights; this assumption is baked into the entrant's payoffs below "
+            "rather than derived from the incumbent's own payoffs here.",
             "<b>Entrant takes expectation over types.</b> The entrant does not see "
             "the type, so she enters iff q&middot;pi<sub>S</sub> + "
             "(1-q)&middot;pi<sub>W</sub> &gt; stay-out payoff.",

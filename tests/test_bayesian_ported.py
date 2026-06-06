@@ -4,12 +4,8 @@ matplotlib.use("Agg")
 
 import matplotlib.pyplot as plt
 import numpy as np
-import pytest
 
-from gtlab.core.bayesian import (
-    EntryGame, FirstPriceAuction, Mechanism, PostedPrice, Procurement,
-    PublicProject, SecondPriceAuction, SpenceSignaling, VCGAssignment,
-)
+from gtlab.core.bayesian import EntryGame, Mechanism, PostedPrice
 from gtlab.games.bayesian import (
     cautious_entrant, costly_diploma, honest_auctioneer, public_project,
     reverse_procurement, shaded_bid_auction, suspicious_buyer,

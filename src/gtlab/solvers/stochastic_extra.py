@@ -61,10 +61,13 @@ def best_response_iteration(
             M2 = r2[s] + gamma * (P[s] * V2n[np.newaxis, np.newaxis, :]).sum(2)
             pi_n[s, int(np.argmax(M1 @ sig[s]))] = 1.0
             sig_n[s, int(np.argmax(pi[s] @ M2))] = 1.0
-        delta = max(float(np.max(np.abs(V1n - V1))),
-                    float(np.max(np.abs(V2n - V2))))
+        # Convergence is policy stability, not value stability: a policy cycle
+        # can leave V stuck (e.g. V=0) yet keep swapping best responses. The
+        # profile is a pure MPE only if neither player's best response moves.
+        policy_stable = (np.array_equal(pi_n, pi)
+                         and np.array_equal(sig_n, sig))
         V1, V2, pi, sig = V1n, V2n, pi_n, sig_n
-        if delta < tol:
+        if policy_stable:
             converged = True
             break
     return {"V1": V1, "V2": V2, "pi": pi, "sig": sig,

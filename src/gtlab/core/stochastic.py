@@ -205,24 +205,25 @@ class StochasticGame:
         policies = result["policies"]
         sections = [html.note(
             "M_s[a,b] = r(s,a,b) + gamma sum_s' P(s'|s,a,b) V*(s'). "
-            "Underline = best response, outline = saddle point.")]
+            "Underline = row best response to q* / col best response to p*; "
+            "outline = stage-equilibrium support (p[a] > 0 and q[b] > 0).")]
         for s in range(self.nS):
             M = self.stage_game(s, V_star)
             p = policies[s]["p"]
             q = policies[s]["q"]
-            Mq = M @ q
-            row_br = set(np.where(Mq >= Mq.max() - 1e-8)[0])
-            saddles = {(a, b) for a in range(self.nA) for b in range(self.nB)
-                       if M[a, b] == M[a, :].min() and M[a, b] == M[:, b].max()}
+            # Restrict marking to the stage equilibrium's SUPPORT so we do not
+            # flood best-response rows or outline every cell of a constant M.
+            row_supp = p > 1e-8
+            col_supp = q > 1e-8
             cells, classes = [], []
             for a in range(self.nA):
                 row, cls = [], []
                 for b in range(self.nB):
                     txt = fmt(M[a, b])
-                    if a in row_br:
+                    if row_supp[a] and col_supp[b]:
                         txt = f'<span class="gt-br">{txt}</span>'
                     row.append(txt)
-                    cls.append("gt-ne" if (a, b) in saddles else "")
+                    cls.append("gt-ne" if (row_supp[a] and col_supp[b]) else "")
                 row.append(fmt_prob(p[a]))
                 cls.append("gt-row")
                 cells.append(row)
@@ -632,6 +633,7 @@ class GeneralSumSG:
 
     def summary(self, title: Optional[str] = None) -> None:
         result = self.best_response_iteration()
+        converged = result["converged"]
         sections = [html.note(
             "Payoffs are (Row, Col), not necessarily zero-sum. Best-response "
             "iteration approximates a pure Markov Perfect Equilibrium.")]
@@ -651,8 +653,21 @@ class GeneralSumSG:
             row += [fmt_prob(result["pi"][s, a]) for a in range(self.nA)]
             row += [fmt_prob(result["sig"][s, b]) for b in range(self.nB)]
             rows.append(row)
-        sections.append("<b>Nash approximation</b>"
+        verdict_title = ("Markov Perfect Equilibrium" if converged
+                         else "Profile after best-response iteration")
+        sections.append(f"<b>{verdict_title}</b>"
                         + html.table(headers, rows, row_headers=self.state_names))
+        if converged:
+            sections.append(html.note(
+                f'<span class="gt-ok">Converged</span> in {result["n_iter"]} '
+                "iterations: the profile above is a pure Markov Perfect "
+                "Equilibrium (each policy best-responds at the joint values)."))
+        else:
+            sections.append(html.note(
+                f'<span class="gt-bad">Did not converge</span> in '
+                f'{result["n_iter"]} iterations: best-response iteration did not '
+                "reach a pure MPE (policies cycle); the profile shown is NOT an "
+                "equilibrium."))
         html.show(html.card(title or self.name, "".join(sections)))
 
     def explain(self, title: Optional[str] = None) -> None:
@@ -670,10 +685,14 @@ class GeneralSumSG:
             "responses Gauss-Seidel style until policies stop changing. On "
             "convergence the result is an approximate Markov Perfect Equilibrium; "
             "which one depends on the initial policy.",
-            f"<b>This run.</b> "
-            f"{'converged' if res['converged'] else 'did not converge'} in "
-            f"{res['n_iter']} iterations to V1* = {fmt_vec(res['V1'])}, "
-            f"V2* = {fmt_vec(res['V2'])}.",
+            (f"<b>This run.</b> Converged in {res['n_iter']} iterations to "
+             f"V1* = {fmt_vec(res['V1'])}, V2* = {fmt_vec(res['V2'])}; the "
+             "profile is a pure Markov Perfect Equilibrium."
+             if res['converged'] else
+             f"<b>This run.</b> Did NOT converge in {res['n_iter']} iterations "
+             "(best-response iteration did not reach a pure MPE: policies cycle), "
+             f"so the profile shown (V1 = {fmt_vec(res['V1'])}, "
+             f"V2 = {fmt_vec(res['V2'])}) is NOT an equilibrium."),
         ]
         html.show(html.card(title or f"{self.name} - why no contraction",
                             html.steps(items)))
@@ -760,14 +779,19 @@ class CheapTalkGame:
                            row_headers=["H type", "L type"])
         diff_H = self.u_S_H_accept - self.u_S_H_reject
         diff_L = self.u_S_L_accept - self.u_S_L_reject
-        if diff_L > 0 and diff_H > diff_L:
+        # Tie the hint to the SAME low-type IC that equilibrium_analysis tests:
+        # separation can only hold if the L type does not gain by mimicking H.
+        eq = self.equilibrium()
+        if eq["ic_L"]:
             cond = (f"H type values Accept more than L type (gain H = {fmt(diff_H)}, "
-                    f"L = {fmt(diff_L)}); single-crossing may allow separation.")
+                    f"L = {fmt(diff_L)}); the low-type IC holds, so separation may "
+                    "be possible.")
         elif diff_L <= 0:
             cond = (f"L type prefers Reject (gain = {fmt(diff_L)}); interests "
                     "partially aligned with the Receiver.")
         else:
-            cond = "Both types strongly prefer Accept; separation unlikely."
+            cond = (f"L type would mimic H (gain L = {fmt(diff_L)}); the low-type IC "
+                    "fails, so separation unravels.")
         body = html.note(
             "Sender observes theta in {H, L}, sends a costless message, Receiver "
             "chooses Accept or Reject.") \

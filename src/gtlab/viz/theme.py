@@ -96,6 +96,8 @@ CSS = """
 .gt-flex { display: flex; flex-wrap: wrap; gap: 16px; align-items: flex-start; }
 .gt-steps { margin: 6px 0 4px 0; padding-left: 1.3em; }
 .gt-steps li { margin: 4px 0; line-height: 1.45; }
+.gt-ok { color: #2e8b57; font-weight: 600; }
+.gt-bad { color: #b3434b; font-weight: 600; }
 </style>
 """
 

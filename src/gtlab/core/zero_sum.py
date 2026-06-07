@@ -458,7 +458,8 @@ class ZeroSumGame:
                         label=self.row_actions[i])
             ax.axhline(v, ls="--", color=C["ne"], label=f"v = {fmt(v)}")
             ax.axvline(q[0], ls=":", color=C["ne"], alpha=0.6)
-            ax.plot(q[0], v, "o", color=C["ne"], zorder=5)
+            ax.plot(q[0], v, "o", color=C["ne"], markersize=8, zorder=5,
+                    label=f"optimum q* = {fmt(q[0])}")
             ax.set_xlabel(f"q = Pr[{self.col_actions[0]}]")
             ax.set_ylabel("Expected payoff to Row")
             ax.set_title("Row's payoff lines")
@@ -471,7 +472,8 @@ class ZeroSumGame:
                         label=self.col_actions[j])
             ax.axhline(-v, ls="--", color=C["ne"], label=f"-v = {fmt(-v)}")
             ax.axvline(p[0], ls=":", color=C["ne"], alpha=0.6)
-            ax.plot(p[0], -v, "o", color=C["ne"], zorder=5)
+            ax.plot(p[0], -v, "o", color=C["ne"], markersize=8, zorder=5,
+                    label=f"optimum p* = {fmt(p[0])}")
             ax.set_xlabel(f"p = Pr[{self.row_actions[0]}]")
             ax.set_ylabel("Expected payoff to Column")
             ax.set_title("Column's payoff lines")
@@ -496,9 +498,13 @@ class ZeroSumGame:
             fig, ax = plt.subplots(figsize=(6, 5))
             cf = ax.contourf(Q, P, Z, levels=20, cmap="RdBu_r")
             ax.contour(Q, P, Z, levels=20, colors="k", linewidths=0.3, alpha=0.4)
-            fig.colorbar(cf, ax=ax, label="p^T A q")
-            ax.plot(q[0], p[0], "*", color="white", markersize=15,
+            fig.colorbar(cf, ax=ax, label="expected payoff to Row  p^T A q")
+            ax.plot(q[0], p[0], "*", color="white", markersize=16,
                     markeredgecolor="black", markeredgewidth=1.2, zorder=5)
+            ax.annotate(f"saddle  v = {fmt(s['value'])}", xy=(q[0], p[0]),
+                        xytext=(6, 8), textcoords="offset points", fontsize=9,
+                        zorder=6, bbox=dict(boxstyle="round,pad=0.3",
+                                            fc="white", ec=C["muted"], alpha=0.85))
             ax.set_xlabel(f"q = Pr[{self.col_actions[0]}]")
             ax.set_ylabel(f"p = Pr[{self.row_actions[0]}]")
             ax.set_title(title or f"{self.name} - value surface", fontweight="bold")
@@ -525,7 +531,8 @@ class ZeroSumGame:
             ax.plot(rng, maximin, color=C["p1"], label="min_q p^T A q")
             ax.axhline(v, ls="--", color=C["ne"], label=f"v = {fmt(v)}")
             bi = int(np.argmax(maximin))
-            ax.plot(rng[bi], maximin[bi], "o", color=C["ne"], zorder=5)
+            ax.plot(rng[bi], maximin[bi], "o", color=C["ne"], markersize=8,
+                    zorder=5, label="maximin optimum")
             ax.set_xlabel(f"p = Pr[{self.row_actions[0]}]")
             ax.set_ylabel("Guaranteed payoff")
             ax.set_title("Row's maximin (security level)")
@@ -535,7 +542,8 @@ class ZeroSumGame:
             ax.plot(rng, minimax, color=C["p2"], label="max_p p^T A q")
             ax.axhline(v, ls="--", color=C["ne"], label=f"v = {fmt(v)}")
             bj = int(np.argmin(minimax))
-            ax.plot(rng[bj], minimax[bj], "o", color=C["ne"], zorder=5)
+            ax.plot(rng[bj], minimax[bj], "o", color=C["ne"], markersize=8,
+                    zorder=5, label="minimax optimum")
             ax.set_xlabel(f"q = Pr[{self.col_actions[0]}]")
             ax.set_ylabel("Worst-case payoff to Row")
             ax.set_title("Column's minimax (holding Row down)")

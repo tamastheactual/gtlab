@@ -712,8 +712,8 @@ class ExtensiveFormGame:
                 ax.plot(spe[0], spe[1], "o", ms=10, color=C["p2"],
                         markeredgecolor="white", markeredgewidth=2.0, zorder=6,
                         label="SPE")
-            ax.set_xlabel(self.players[0])
-            ax.set_ylabel(self.players[1])
+            ax.set_xlabel(f"payoff to {self.players[0]}")
+            ax.set_ylabel(f"payoff to {self.players[1]}")
             ax.set_title(title or f"{self.name} - feasible set & frontier")
             ax.legend(loc="best")
             ax.set_aspect("equal", adjustable="box")
@@ -897,6 +897,12 @@ class ExtensiveFormGame:
             else:
                 labels.append(" & ".join(names[p] for p in
                                          sorted(s, key=profiles.index)))
+        # Only surface regions that occupy a non-negligible share of the grid:
+        # 1-pixel boundary slivers are visual noise and bloat the legend.
+        counts = np.bincount(Z.ravel(), minlength=nc)
+        min_cells = max(2, int(0.01 * n * n))
+        present = sorted(set(Z.ravel()))
+        legend_codes = [k for k in present if counts[k] >= min_cells]
         with rc_context({"axes.grid": False}):
             fig, ax = plots.new_axes(figsize)
             ax.imshow(Z, origin="lower", aspect="auto",
@@ -905,8 +911,8 @@ class ExtensiveFormGame:
                       norm=BoundaryNorm(np.arange(-0.5, nc, 1), nc),
                       interpolation="nearest")
             handles = [Patch(facecolor=colors[k], edgecolor="#666",
-                             label=labels[k]) for k in sorted(set(Z.ravel()))]
-            ax.legend(handles=handles, loc="upper left", title="NE type")
+                             label=labels[k]) for k in legend_codes]
+            plots.legend_outside(ax, handles=handles, title="NE type")
             ax.set_xlabel(x_name)
             ax.set_ylabel(y_name)
             ax.set_title(title or "Pure NE regions")
@@ -942,15 +948,24 @@ class ExtensiveFormGame:
                            extent=(x_range[0], x_range[1], y_range[0],
                                    y_range[1]), origin="lower", aspect="auto",
                            vmin=0, vmax=len(acts) - 1 if len(acts) > 1 else 1)
+            # Crisp boundary at each SPE action switch so the (light-tinted)
+            # regions are clearly delineated, not just distinguished by hue.
+            if len(acts) > 1 and len(np.unique(spe_type)) > 1:
+                ax.contour(xs, ys, spe_type,
+                           levels=np.arange(0.5, len(acts) - 0.5 + 1e-9, 1.0),
+                           colors=C["text"], linewidths=1.6)
             cbar = fig.colorbar(im, ax=ax,
                                 ticks=list(range(len(acts))))
             cbar.ax.set_yticklabels(acts)
             cbar.set_label(f"SPE action at {decision_node}")
             finite = np.isfinite(poa)
             if finite.any():
+                # Darker contour so the PoA lines stay legible over the pale
+                # region fills (the old white lines vanished on light tints).
                 cs = ax.contour(xs, ys, np.where(finite, poa, np.nan),
-                                levels=5, colors="white", linewidths=1.0)
-                ax.clabel(cs, inline=True, fmt="PoA %.1f")
+                                levels=5, colors=C["p2"], linewidths=1.1,
+                                alpha=0.9)
+                ax.clabel(cs, inline=True, fmt="PoA %.1f", fontsize=8)
             ax.set_xlabel(x_name)
             ax.set_ylabel(y_name)
             ax.set_title(title or "SPE regions & price of anarchy")

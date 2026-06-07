@@ -27,7 +27,7 @@ def _has_class(html, cls):
     return bool(re.search(rf'class="[^"]*{cls}', html))
 
 
-# BLOCKER-1: strict (not weak) dominance — these games have NO strictly
+# BLOCKER-1: strict (not weak) dominance - these games have NO strictly
 # dominated strategies, so solve_nf must strike nothing.
 def test_strict_dominance_strikes_nothing():
     for g in (entry_deterrence(), chain_store_game()):

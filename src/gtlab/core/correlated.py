@@ -237,52 +237,125 @@ class CorrelatedGame:
                           "deviation constraints of the previous).")
         html.show(html.card(title or f"{self.name} - LP for CE / CCE", body))
 
+    @staticmethod
+    def _hull_key(pts: np.ndarray):
+        """Return a hashable rounded-vertex signature for coincidence testing."""
+        if pts is None or not len(pts):
+            return ()
+        uniq = np.unique(np.round(np.asarray(pts, float), 6), axis=0)
+        return tuple(map(tuple, uniq[np.lexsort(uniq.T)]))
+
+    @staticmethod
+    def _draw_hull(ax, pts: np.ndarray, color: str, alpha: float, zorder: int,
+                   edge_only: bool = False) -> None:
+        """Draw the convex hull of payoff vertices ``pts`` as a translucent patch.
+
+        The LP sampler returns polytope VERTICES, so the achievable region is the
+        convex hull of those points. Degenerate cases (a single point, or
+        collinear vertices) fall back to a marker / line. ``edge_only`` draws just
+        the outline (used for an outer region whose interior another region covers).
+        """
+        if pts is None or not len(pts):
+            return
+        uniq = np.unique(np.round(pts, 9), axis=0)
+        if len(uniq) == 1:
+            ax.plot(uniq[0, 0], uniq[0, 1], marker="o", ms=7, color=color,
+                    alpha=min(1.0, alpha + 0.4), zorder=zorder)
+            return
+        if len(uniq) == 2:
+            ax.plot(uniq[:, 0], uniq[:, 1], color=color, lw=3.0,
+                    alpha=min(1.0, alpha + 0.4), zorder=zorder)
+            return
+        from scipy.spatial import ConvexHull, QhullError
+        try:
+            hull = ConvexHull(uniq)
+            verts = uniq[hull.vertices]
+            if edge_only:
+                ax.fill(verts[:, 0], verts[:, 1], facecolor="none",
+                        edgecolor=color, lw=2.0, zorder=zorder)
+            else:
+                ax.fill(verts[:, 0], verts[:, 1], color=color, alpha=alpha,
+                        edgecolor=color, lw=1.2, zorder=zorder)
+        except (QhullError, ValueError):
+            order = np.argsort(uniq[:, 0] + uniq[:, 1])
+            seg = uniq[order][[0, -1]]
+            ax.plot(seg[:, 0], seg[:, 1], color=color, lw=3.0,
+                    alpha=min(1.0, alpha + 0.4), zorder=zorder)
+
     def plot_payoff_region(self, n_samples: int = 400, seed: int = 0,
                            title: Optional[str] = None):
-        """Scatter the achievable CE and CCE payoff pairs, with NE and pure cells.
+        """Filled CE / CCE achievable-payoff regions, with NE and pure outcomes.
 
-        Random linear objectives are optimized over each polytope to trace its
-        payoff image. Returns ``(fig, ax)``.
+        Random linear objectives are optimized over each polytope to recover its
+        payoff-image VERTICES; the achievable region is the convex hull of those
+        vertices, drawn as a translucent patch (CCE underneath, CE on top, so the
+        CE region is visibly contained in the CCE region). Returns ``(fig, ax)``.
         """
+        from matplotlib.patches import Patch
+        from matplotlib.lines import Line2D
+
         cce_pts = sample_payoff_region(self.A, self.B, coarse=True,
                                        n_samples=n_samples, seed=seed)
         ce_pts = sample_payoff_region(self.A, self.B, coarse=False,
                                       n_samples=n_samples, seed=seed + 1)
+        # For many 2x2 games the CE and CCE payoff images coincide; in that case
+        # draw one region (so the legend never advertises an invisible patch).
+        coincident = self._hull_key(cce_pts) == self._hull_key(ce_pts)
         m, n = self.shape
         with rc_context():
-            fig, ax = plots.new_axes(figsize=(6.0, 5.0))
-            if len(cce_pts):
-                ax.scatter(cce_pts[:, 0], cce_pts[:, 1], s=10, alpha=0.20,
-                           color=C["cce"], label="CCE payoffs", zorder=1)
-            if len(ce_pts):
-                ax.scatter(ce_pts[:, 0], ce_pts[:, 1], s=10, alpha=0.30,
-                           color=C["ce"], label="CE payoffs", zorder=2)
-            # Pure-strategy outcomes (group cells that share the same payoff point
-            # so coincident labels are joined instead of overlapping).
+            fig, ax = plots.new_axes(figsize=(6.4, 5.0))
+            handles = []
+            if coincident:
+                self._draw_hull(ax, ce_pts, C["ce"], alpha=0.25, zorder=1)
+                handles.append(Patch(facecolor=C["ce"], edgecolor=C["ce"],
+                                     label="CE = CCE region"))
+            else:
+                # CCE region (outer): fill + bold outline so it shows around CE.
+                self._draw_hull(ax, cce_pts, C["cce"], alpha=0.16, zorder=1)
+                self._draw_hull(ax, cce_pts, C["cce"], alpha=1.0, zorder=2,
+                                edge_only=True)
+                self._draw_hull(ax, ce_pts, C["ce"], alpha=0.30, zorder=3)
+                handles += [
+                    Patch(facecolor=C["cce"], edgecolor=C["cce"], label="CCE region"),
+                    Patch(facecolor=C["ce"], edgecolor=C["ce"], label="CE region"),
+                ]
+            # Pure-strategy outcomes (group cells sharing a payoff point so
+            # coincident labels are joined). Labels offset toward the plot centre
+            # so right-side labels do not run into the outside legend.
             cell_groups: dict = {}
             for i in range(m):
                 for j in range(n):
                     key = (self.A[i, j], self.B[i, j])
                     cell_groups.setdefault(key, []).append(
                         f"({self.row_actions[i]},{self.col_actions[j]})")
+            xs = [k[0] for k in cell_groups]
+            xmid = (min(xs) + max(xs)) / 2 if xs else 0.0
             for (ax_val, bx_val), labels in cell_groups.items():
-                ax.scatter(ax_val, bx_val, s=40, color=C["muted"],
-                           marker="s", alpha=0.8, zorder=3)
+                ax.scatter(ax_val, bx_val, s=34, color=C["muted"],
+                           marker="s", alpha=0.75, zorder=4,
+                           edgecolor="white", linewidth=0.5)
+                right = ax_val >= xmid
                 ax.annotate("/".join(labels), (ax_val, bx_val),
-                            textcoords="offset points", xytext=(5, 5),
-                            fontsize=7.5, color=C["text"])
-            # Nash equilibria.
-            for k, (eu_r, eu_c) in enumerate(self._nash_payoffs()):
-                ax.scatter(eu_r, eu_c, s=140, color=C["ne"], marker="*",
-                           zorder=5, label="NE" if k == 0 else None)
+                            textcoords="offset points",
+                            xytext=(-6, 6) if right else (6, 6),
+                            ha="right" if right else "left",
+                            fontsize=7.5, color=C["text"], clip_on=True)
+            # Nash equilibria, drawn last so the stars sit clearly on top.
+            has_ne = False
+            for eu_r, eu_c in self._nash_payoffs():
+                has_ne = True
+                ax.scatter(eu_r, eu_c, s=170, color=C["ne"], marker="*",
+                           edgecolor="white", linewidth=0.6, zorder=6)
             ax.set_xlabel(f"{self.row_name} payoff")
             ax.set_ylabel(f"{self.col_name} payoff")
             ax.set_title(title or f"{self.name} - payoff region")
-            ax.margins(0.15)
-            # The NE in CE in CCE relation lives in the (outside) legend title so
-            # it never collides with the plot title or data points.
-            ax.legend(loc="upper left", bbox_to_anchor=(1.02, 1.0),
-                      title="NE ⊆ CE ⊆ CCE")
+            ax.margins(0.16)
+            handles.append(Line2D([], [], marker="s", ls="none", color=C["muted"],
+                                  markersize=6, label="pure outcome"))
+            if has_ne:
+                handles.append(Line2D([], [], marker="*", ls="none", color=C["ne"],
+                                      markersize=13, label="NE"))
+            plots.legend_outside(ax, handles=handles, title="NE ⊆ CE ⊆ CCE")
         return fig, ax
 
     @staticmethod
@@ -312,12 +385,20 @@ class CorrelatedGame:
         width = 0.26
         with rc_context():
             fig, ax = plots.new_axes(figsize=(max(7.0, len(names) * 2.0), 5.0))
-            ax.bar(x - width, ne_w, width, label="max-welfare NE", color=C["ne"], alpha=0.85)
-            ax.bar(x, ce_w, width, label="max-welfare CE", color=C["ce"], alpha=0.85)
-            ax.bar(x + width, cce_w, width, label="max-welfare CCE", color=C["cce"], alpha=0.85)
+            series = [(-width, ne_w, "max-welfare NE", C["ne"]),
+                      (0.0, ce_w, "max-welfare CE", C["ce"]),
+                      (width, cce_w, "max-welfare CCE", C["cce"])]
+            for off, vals, lbl, col in series:
+                bars = ax.bar(x + off, vals, width, label=lbl, color=col, alpha=0.9)
+                # Value labels so a genuinely-zero group reads as present, not broken.
+                ax.bar_label(bars, fmt="%.3g", fontsize=8, padding=2)
+            lo, hi = min(min(ne_w), min(ce_w), min(cce_w)), max(max(ne_w), max(ce_w), max(cce_w))
+            pad = max(0.5, 0.12 * (hi - lo if hi > lo else abs(hi) or 1))
+            ax.set_ylim(min(0.0, lo) - pad, hi + pad)
+            ax.axhline(0, color=C["grid"], lw=0.8, zorder=0)
             ax.set_xticks(x, names, rotation=15, ha="right")
             ax.set_ylabel("social welfare (sum of payoffs)")
-            ax.set_title(title or "Welfare comparison: NE subset CE subset CCE")
+            ax.set_title(title or "Welfare comparison: NE ⊆ CE ⊆ CCE")
             ax.legend()
         return fig, ax
 

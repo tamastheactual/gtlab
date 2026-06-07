@@ -16,20 +16,23 @@ C = {
     "p1": "#4c72b0",       # Row / player 1   (deep blue)
     "p2": "#c44e52",       # Column / player 2 (muted red)
     # 8-digit hex (#RRGGBBAA) so the tints are valid in BOTH matplotlib and CSS.
-    "p1_light": "#4c72b029",
-    "p2_light": "#c44e5229",
+    # Tints are ~30% alpha so region fills / BR-map cells read on white.
+    "p1_light": "#4c72b04d",
+    "p2_light": "#c44e524d",
     "ne": "#55a868",       # Nash equilibrium  (muted green)
+    "ne_light": "#55a8684d",
     "ce": "#8172b3",       # Correlated equilibrium (muted violet)
     "cce": "#dd8452",      # Coarse correlated equilibrium (muted orange)
     "chance": "#dd8452",   # chance nodes (extensive form)
     "terminal": "#55a868",
-    "terminal_light": "#55a86829",  # terminal-node fill (extensive form)
+    "terminal_light": "#55a8684d",  # terminal-node fill (extensive form)
     "pareto": "#c9a227",   # Pareto star (muted gold, not neon yellow)
-    "grid": "#8c8c8c",
+    "grid": "#9aa0a6",
+    "empty": "#e6e8eb",    # neutral fill for an EMPTY / N-A region (never for data)
     "cell": "#8080800f",
     "cell_alt": "#8080801f",
     "text": "#1f2937",     # plot annotations (figures render on white)
-    "muted": "#94a3b8",
+    "muted": "#8a93a0",
     "accent": "#64b5cd",   # muted cyan
 }
 
@@ -37,21 +40,45 @@ C = {
 CYCLE = ["#4c72b0", "#dd8452", "#55a868", "#c44e52", "#8172b3",
          "#937860", "#da8bc3", "#8c8c8c", "#ccb974", "#64b5cd"]
 
-# matplotlib rcParams shared by every plot helper.
+# matplotlib rcParams shared by every plot helper. Tuned for clean, slide-ready
+# figures: soft off-white axes, grid behind data, muted spines/ticks, and a
+# light rounded legend frame for readability when a legend sits near data.
 RC_PARAMS = {
-    "figure.dpi": 120,
-    "savefig.dpi": 120,
+    "figure.dpi": 130,
+    "savefig.dpi": 130,
     "savefig.bbox": "tight",
+    "figure.facecolor": "white",
+    "axes.facecolor": "#fbfbfc",
+    "font.family": "sans-serif",
     "font.size": 11,
-    "axes.titlesize": 12,
+    "axes.titlesize": 12.5,
     "axes.titleweight": "bold",
+    "axes.titlepad": 10.0,
+    "axes.titlecolor": "#1f2937",
     "axes.labelsize": 11,
+    "axes.labelcolor": "#374151",
+    "axes.labelpad": 6.0,
+    "axes.edgecolor": "#b8bcc2",
+    "axes.linewidth": 1.0,
     "axes.spines.top": False,
     "axes.spines.right": False,
+    "axes.axisbelow": True,
     "axes.grid": True,
-    "grid.alpha": 0.25,
-    "grid.color": "#8c8c8c",
-    "legend.frameon": False,
+    "grid.alpha": 0.30,
+    "grid.color": "#9aa0a6",
+    "grid.linewidth": 0.7,
+    "xtick.color": "#6b7280",
+    "ytick.color": "#6b7280",
+    "xtick.labelsize": 10,
+    "ytick.labelsize": 10,
+    "lines.linewidth": 2.2,
+    "lines.solid_capstyle": "round",
+    "legend.frameon": True,
+    "legend.framealpha": 0.92,
+    "legend.edgecolor": "#e2e4e8",
+    "legend.fancybox": True,
+    "legend.borderpad": 0.5,
+    "legend.fontsize": 9.5,
     "figure.autolayout": True,
 }
 

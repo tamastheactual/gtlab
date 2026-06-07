@@ -394,8 +394,9 @@ class StochasticGame:
             ax.set_yticks(range(self.nS))
             ax.set_yticklabels(self.state_names)
             ax.set_xlabel("Time step t")
+            ax.set_ylabel("State")
             ax.set_title("State sequence (1 trajectory)")
-            ax.legend(fontsize=8)
+            ax.legend(fontsize=8, loc="best")
             ax2 = axes[1]
             for k in range(min(K, 6)):
                 ax2.plot(cesaro[k], alpha=0.2, color=C["muted"], linewidth=0.8)
@@ -412,7 +413,9 @@ class StochasticGame:
             ax2.set_xlabel("Time step t")
             ax2.set_ylabel("Cesàro avg reward")
             ax2.set_title(f"Empirical avg reward (K={K})")
-            ax2.legend()
+            # Anchor lower-right so the legend never covers the curves/band, which
+            # converge toward the (1-gamma) V*(s0) line in the upper region.
+            ax2.legend(loc="lower right")
             ax3 = axes[2]
             means = sf.mean(axis=0)
             stds = sf.std(axis=0)
@@ -422,7 +425,9 @@ class StochasticGame:
             ax3.errorbar(x, means, yerr=stds, fmt="none", color="black", capsize=4)
             ax3.set_xticks(x)
             ax3.set_xticklabels(self.state_names)
+            ax3.set_xlabel("State")
             ax3.set_ylabel("Fraction of time")
+            ax3.set_ylim(0, None)
             ax3.set_title(f"Stationary distribution (K={K})")
             fig.suptitle(title or f"{self.name} - trajectories")
         return fig, axes
@@ -432,11 +437,20 @@ class StochasticGame:
                        title: Optional[str] = None):
         """Heatmap of Q*(s,a,b) per state. Returns (fig, axes)."""
         Q = self.q_values(result)
+        # Shared color scale across all per-state panels so equal colors mean
+        # equal Q* values; a single shared colorbar documents the common scale.
         vmin, vmax = float(np.min(Q)), float(np.max(Q))
-        with rc_context():
+        span = vmax - vmin
+        if span < 1e-12:  # constant Q: avoid a degenerate (vmin == vmax) norm
+            vmin, vmax = vmin - 0.5, vmax + 0.5
+            span = vmax - vmin
+        mid = (vmin + vmax) / 2
+        # constrained_layout places the shared colorbar without overlapping a panel.
+        with rc_context({"figure.autolayout": False}):
             import matplotlib.pyplot as plt
             fig, axes = plt.subplots(1, self.nS, figsize=(4.5 * self.nS, 4.4),
-                                     squeeze=False)
+                                     squeeze=False, constrained_layout=True)
+            im = None
             for s, ax in enumerate(axes[0]):
                 im = ax.imshow(Q[s], cmap="coolwarm", vmin=vmin, vmax=vmax,
                                aspect="auto")
@@ -444,18 +458,20 @@ class StochasticGame:
                 ax.set_xticklabels(self.col_actions)
                 ax.set_yticks(range(self.nA))
                 ax.set_yticklabels(self.row_actions)
-                ax.set_xlabel("Col action")
-                ax.set_ylabel("Row action")
+                ax.set_xlabel("Col action b")
+                ax.set_ylabel("Row action a")
                 ax.set_title(f"Q*({self.state_names[s]})")
                 ax.grid(False)
                 for a in range(self.nA):
                     for b in range(self.nB):
-                        mid = (vmin + vmax) / 2
-                        col = "black" if abs(Q[s, a, b] - mid) < (vmax - vmin) * 0.35 \
+                        col = "black" if abs(Q[s, a, b] - mid) < span * 0.35 \
                             else "white"
                         ax.text(b, a, f"{Q[s, a, b]:+.2f}", ha="center",
                                 va="center", color=col, fontweight="bold")
-                fig.colorbar(im, ax=ax, shrink=0.82)
+            # One shared colorbar for all panels (same norm everywhere), placed
+            # outside the panels by constrained_layout.
+            fig.colorbar(im, ax=list(axes[0]), location="right",
+                         fraction=0.046, pad=0.04, label="Q*(s,a,b)")
             fig.suptitle(title or f"{self.name} - Q*(s,a,b)")
         return fig, axes
 
@@ -874,8 +890,11 @@ class CheapTalkGame:
             fig, ax = plt.subplots(figsize=(11, 4))
             ax.fill_between(priors, 0, pool, alpha=0.5, color=C["p1"],
                             label="Pooling (Receiver Accepts)")
-            ax.fill_between(priors, 0, sep, alpha=0.5, color=C["ne"],
-                            label="Separating")
+            # Only draw the separating layer/legend entry when its region is
+            # non-empty - otherwise a phantom zero-area "Separating" entry shows.
+            if max(sep) > 0:
+                ax.fill_between(priors, 0, sep, alpha=0.5, color=C["ne"],
+                                label="Separating")
             ax.fill_between(priors, 0, bab, alpha=0.4, color=C["p2"],
                             label="Babbling (Receiver Rejects)")
             ax.axvline(self.mu_thr, color=C["muted"], linestyle="--", linewidth=1.5,
@@ -883,9 +902,12 @@ class CheapTalkGame:
             ax.set_xlabel("Prior P(High type)")
             ax.set_ylabel("Equilibrium exists (0/1)")
             ax.set_title(title or f"{self.name} - equilibrium regions vs prior")
-            ax.set_ylim(-0.05, 1.5)
+            # Tighten to the data range (region indicators are 0/1) with a little
+            # headroom for the legend instead of ~40% empty space.
+            ax.set_ylim(-0.05, 1.15)
             ax.set_yticks([0, 1])
-            ax.legend()
+            # Legend outside so it never covers the region fills or mu* line.
+            plots.legend_outside(ax)
         return fig, ax
 
     def __repr__(self) -> str:

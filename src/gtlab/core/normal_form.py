@@ -480,15 +480,20 @@ class NormalFormGame:
                     ax.axis("off")
                 return fig, (ax_r, ax_c)
             p, q = eqs[0]
-            ax_r.bar(range(len(p)), p, color=C["p1"])
-            ax_r.set_xticks(range(len(p)), self.row_actions, rotation=45, ha="right")
-            ax_r.set_ylabel("probability")
-            ax_r.set_ylim(0, 1)
-            ax_r.set_title(f"{self.row_name}'s mix p*")
-            ax_c.bar(range(len(q)), q, color=C["p2"])
-            ax_c.set_xticks(range(len(q)), self.col_actions, rotation=45, ha="right")
-            ax_c.set_ylim(0, 1)
-            ax_c.set_title(f"{self.col_name}'s mix q*")
+            ax_r.bar(range(len(p)), p, color=C["p1"], zorder=3)
+            ax_r.set_xticks(range(len(p)))
+            ax_r.set_xticklabels(self.row_actions, rotation=45, ha="right")
+            ax_r.set_xlabel(f"{self.row_name} action")
+            ax_r.set_ylabel("Equilibrium probability")
+            ax_r.set_ylim(0, 1.0)
+            ax_r.set_title(f"{self.row_name}'s mix $p^*$")
+            ax_c.bar(range(len(q)), q, color=C["p2"], zorder=3)
+            ax_c.set_xticks(range(len(q)))
+            ax_c.set_xticklabels(self.col_actions, rotation=45, ha="right")
+            ax_c.set_xlabel(f"{self.col_name} action")
+            ax_c.set_ylabel("Equilibrium probability")
+            ax_c.set_ylim(0, 1.0)
+            ax_c.set_title(f"{self.col_name}'s mix $q^*$")
         return fig, (ax_r, ax_c)
 
     # ── continuous best-response curves (static) ─────────────────────────────
@@ -629,11 +634,19 @@ class NormalFormGame:
         xs, ys, Z, ne_sets, profiles, profile_names = sweep_regions_data(
             factory, x_range, y_range, n=n)
         nc = len(ne_sets)
-        pal = ["#e0e0e0", C["p1"], C["accent"], C["chance"], C["p2"],
-               C["ne"], C["ce"], C["cce"]]
-        colors = [pal[k % len(pal)] for k in range(nc)]
-        if ne_sets and not ne_sets[0]:
-            colors[0] = "#e0e0e0"
+        # Saturated palette so each *real* equilibrium region is clearly visible.
+        # The neutral C["empty"] gray is reserved for the empty (no-pure-NE) set
+        # only -- a non-empty region must never be painted with it. Cycle the
+        # palette per non-empty set so each gets a distinct, saturated color.
+        pal = [C["p1"], C["ne"], C["cce"], C["ce"], C["p2"], C["accent"],
+               C["chance"], C["pareto"]]
+        colors, k = [], 0
+        for s in ne_sets:
+            if not s:
+                colors.append(C["empty"])
+            else:
+                colors.append(pal[k % len(pal)])
+                k += 1
         cmap = ListedColormap(colors)
         norm = BoundaryNorm(np.arange(-0.5, nc, 1), nc)
 
@@ -652,10 +665,11 @@ class NormalFormGame:
             ax.imshow(Z, origin="lower", aspect="auto",
                       extent=[xs[0], xs[-1], ys[0], ys[-1]],
                       cmap=cmap, norm=norm, interpolation="nearest")
-            present = sorted(set(Z.ravel()))
-            handles = [Patch(facecolor=colors[k], edgecolor="#666666",
+            present = sorted(set(int(v) for v in Z.ravel()))
+            handles = [Patch(facecolor=colors[k], edgecolor=C["grid"],
                              label=labels[k]) for k in present]
-            ax.legend(handles=handles, loc="upper left", title="Equilibrium type")
+            # Place the legend outside the map so it never covers a region.
+            plots.legend_outside(ax, handles=handles, title="Equilibrium type")
             ax.set_xlabel(x_name)
             ax.set_ylabel(y_name)
             ax.set_title(title or f"Pure NE structure vs {x_name}, {y_name}")

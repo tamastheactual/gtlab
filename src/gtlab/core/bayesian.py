@@ -223,16 +223,19 @@ class PostedPrice(Mechanism):
             ax.fill_between(grid, R, step="post", alpha=0.08, color=C["p1"],
                             linewidth=0)
             ax.scatter(cand, cand_R, color=C["ne"], zorder=5, s=44,
-                       edgecolor="white", linewidths=0.8)
+                       edgecolor="white", linewidths=0.8,
+                       label="candidate prices")
             ax.set_ylim(0, R_max * 1.25)
             ax.axvline(p_star, ls=":", lw=1.1, color=C["ne"], alpha=0.7)
             ax.annotate(f"optimal: p* = {fmt_money(p_star)}",
                         xy=(p_star, R_max * 1.2), xycoords="data",
                         xytext=(4, 0), textcoords="offset points",
                         ha="left", va="top", clip_on=True,
-                        color=C["ne"], fontweight="bold")
-            ax.set_xlabel("Posted price p")
-            ax.set_ylabel("Expected revenue E[R | p]")
+                        color=C["ne"], fontweight="bold",
+                        bbox=dict(boxstyle="round,pad=0.2", fc="white", ec="none",
+                                  alpha=0.75))
+            ax.set_xlabel("Posted price p ($)")
+            ax.set_ylabel("Expected revenue E[R | p] ($)")
             ax.set_title(title or f"{self.name}: seller's expected revenue")
             ax.legend(loc="lower right")
         return fig, ax
@@ -434,15 +437,23 @@ class SecondPriceAuction(Mechanism):
         for b in b_grid:
             won = b > rivals_max
             utils.append(float(np.where(won, v_me - rivals_max, 0.0).mean()))
+        u_max = max(utils) if utils else 0.0
         with rc_context():
             import matplotlib.pyplot as plt
             fig, ax = plt.subplots(figsize=figsize)
             ax.plot(b_grid, utils, color=C["p1"], lw=2.4, label="expected utility")
             ax.axvline(v_me, ls=":", lw=1.2, color=C["ne"],
                        label=f"truthful bid b = v = {fmt(v_me)}")
+            ax.annotate("truthful bid is weakly dominant\n(overbidding can win at a loss)",
+                        xy=(v_me, u_max), xycoords="data",
+                        xytext=(-6, -2), textcoords="offset points",
+                        ha="right", va="top", fontsize=8.5, color=C["ne"],
+                        fontweight="bold",
+                        bbox=dict(boxstyle="round,pad=0.2", fc="white", ec="none",
+                                  alpha=0.75))
             ax.set_xlabel("Bidder 1's own bid b_1")
             ax.set_ylabel(f"Expected utility (value v_1 = {fmt(v_me)})")
-            ax.set_title(title or f"{self.name}: utility is flat around the truthful bid")
+            ax.set_title(title or f"{self.name}: truthful bidding is weakly dominant")
             ax.legend(loc="best")
         return fig, ax
 
@@ -543,14 +554,16 @@ class SpenceSignaling(Mechanism):
                     label="low type if mimicking: w_H - c_L e")
             ax.plot(e, u_high, color=C["p2"], lw=2.3,
                     label="high type: w_H - c_H e")
-            ax.axvspan(e_min, e_max, color=C["ne"], alpha=0.10)
+            ax.axvspan(e_min, e_max, color=C["ne_light"])
             ax.axvline(e_min, ls=":", lw=0.9, color=C["ne"])
             ax.axvline(e_max, ls=":", lw=0.9, color=C["ne"])
-            ax.text(0.5 * (e_min + e_max), 1.0, "separating\ninterval",
+            ax.text(0.5 * (e_min + e_max), 0.97, "separating\ninterval",
                     transform=ax.get_xaxis_transform(), ha="center", va="top",
-                    color=C["ne"], fontweight="bold")
+                    color=C["ne"], fontweight="bold",
+                    bbox=dict(boxstyle="round,pad=0.2", fc="white", ec="none",
+                              alpha=0.75))
             ax.set_xlabel("Education level e")
-            ax.set_ylabel("Net utility")
+            ax.set_ylabel("Net utility ($)")
             ax.set_title(title or f"{self.name}: signaling utility curves")
             ax.legend(loc="lower left")
         return fig, ax
@@ -689,12 +702,19 @@ class VCGAssignment(Mechanism):
             import matplotlib.pyplot as plt
             fig, ax = plt.subplots(figsize=figsize)
             ax.plot(report_range, u, color=C["p1"], lw=2.4, marker="o",
-                    markersize=5, label=f"{self.bidders[bidder_idx]}'s utility")
+                    markersize=5, label=f"{self.bidders[bidder_idx]}'s utility ($)")
             ax.axvline(true_v, ls=":", lw=1.2, color=C["ne"],
-                       label=f"truthful report = {fmt(true_v)}")
+                       label=f"truthful report = {fmt_money(true_v)}")
+            ax.annotate("truthful report\nmaximises utility",
+                        xy=(true_v, max(u) if u else 0.0), xycoords="data",
+                        xytext=(6, -2), textcoords="offset points",
+                        ha="left", va="top", fontsize=8.5, color=C["ne"],
+                        fontweight="bold",
+                        bbox=dict(boxstyle="round,pad=0.2", fc="white", ec="none",
+                                  alpha=0.75))
             ax.set_xlabel(f"{self.bidders[bidder_idx]}'s reported value "
-                          f"for {self.items[item_idx]}")
-            ax.set_ylabel("True utility")
+                          f"for {self.items[item_idx]} ($)")
+            ax.set_ylabel("True utility ($)")
             ax.set_title(title or f"{self.name}: truthful report maximises utility")
             ax.legend(loc="best")
         return fig, ax
@@ -712,19 +732,28 @@ class VCGAssignment(Mechanism):
         with rc_context():
             import matplotlib.pyplot as plt
             fig, ax = plt.subplots(figsize=figsize)
-            ax.bar(x - 0.175, values_won, 0.35, color=C["p1"],
-                   label="value of item won")
-            ax.bar(x + 0.175, pays, 0.35, color=C["p2"], label="VCG payment")
-            ax.set_ylim(0, y_max * 1.22)
+            b_val = ax.bar(x - 0.175, values_won, 0.35, color=C["p1"],
+                           label="value of item won ($)")
+            b_pay = ax.bar(x + 0.175, pays, 0.35, color=C["p2"],
+                           label="VCG payment ($)")
+            # Label every bar so a $0 payment shows as a baseline "$0" tick
+            # rather than reading as a missing series.
+            ax.bar_label(b_val, labels=[fmt_money(v) for v in values_won],
+                         padding=2, fontsize=8, color=C["muted"])
+            ax.bar_label(b_pay, labels=[fmt_money(p) for p in pays],
+                         padding=2, fontsize=8, color=C["muted"])
+            ax.set_ylim(0, y_max * 1.28)
             for i in range(len(self.bidders)):
                 bar_top = max(values_won[i], pays[i])
-                y_lbl = (bar_top if bar_top > 0 else 0.0) + y_max * 0.04
+                y_lbl = (bar_top if bar_top > 0 else 0.0) + y_max * 0.11
                 ax.text(i, y_lbl,
-                        f"u = {fmt(values_won[i] - pays[i])}", ha="center",
-                        va="bottom", color=C["ne"], fontweight="bold")
+                        f"u = {fmt_money(values_won[i] - pays[i])}", ha="center",
+                        va="bottom", color=C["ne"], fontweight="bold",
+                        bbox=dict(boxstyle="round,pad=0.2", fc="white", ec="none",
+                                  alpha=0.75))
             ax.set_xticks(x)
             ax.set_xticklabels(self.bidders)
-            ax.set_ylabel("Amount")
+            ax.set_ylabel("Amount ($)")
             ax.set_title(title or f"{self.name}: values won vs VCG payments")
             ax.legend(loc="upper right")
         return fig, ax
@@ -821,14 +850,15 @@ class PublicProject(Mechanism):
             import matplotlib.pyplot as plt
             fig, ax = plt.subplots(figsize=figsize)
             ax.bar(x - 0.165, equal, 0.33, color=C["muted"], alpha=0.55,
-                   label="equal sharing (not IR)")
+                   label="equal sharing (not IR, $)")
             ax.bar(x + 0.165, pay, 0.33, color=C["p2"],
-                   label="Clarke pivot payment")
+                   label="Clarke pivot payment ($)")
             ax.plot(x, self.values, "o-", color=C["p1"], lw=2.0, markersize=8,
-                    label="reported value")
+                    markeredgecolor="white", markeredgewidth=0.8, zorder=5,
+                    label="reported value ($)")
             ax.set_xticks(x)
             ax.set_xticklabels(self.citizens)
-            ax.set_ylabel("Money")
+            ax.set_ylabel("Money ($)")
             ax.set_title(title or f"{self.name}: values vs pivot vs equal sharing")
             ax.legend(loc="best")
         return fig, ax
@@ -911,10 +941,19 @@ class Procurement(Mechanism):
         return _df({"trial": np.arange(1, n_trials + 1), **cols})
 
     def plot_utility_sweep(self, title: Optional[str] = None,
-                           firm_true_cost: float = 40.0, n_trials: int = 3000,
+                           firm_true_cost: Optional[float] = None,
+                           n_trials: int = 3000,
                            seed: int = 0, figsize: Tuple[float, float] = (7.0, 4.4)):
-        """Firm 1's expected profit vs its reported cost, rivals truthful (IC check)."""
+        """Firm 1's expected profit vs its reported cost, rivals truthful (IC check).
+
+        ``firm_true_cost`` defaults to the median cost type so the truthful
+        reference line sits inside the swept range and the sweep is centered on
+        the real cost data (rather than a hardcoded value that can land far off
+        a small cost set like [2, 5]).
+        """
         rng = np.random.default_rng(seed)
+        if firm_true_cost is None:
+            firm_true_cost = float(np.median(self.costs))
         lo, hi = 0.5 * float(self.costs.min()), 1.5 * float(self.costs.max())
         r_grid = np.linspace(lo, hi, 41)
         rivals = rng.choice(self.costs, size=(n_trials, self.n - 1), p=self.probs)
@@ -926,15 +965,29 @@ class Procurement(Mechanism):
             second = np.sort(all_reports, axis=1)[:, 1]
             payment = np.where(won, second, 0.0)
             utils.append(float(np.where(won, payment - firm_true_cost, 0.0).mean()))
+        u_max = max(utils) if utils else 0.0
+        i_star = int(np.argmax(utils)) if utils else 0
         with rc_context():
             import matplotlib.pyplot as plt
             fig, ax = plt.subplots(figsize=figsize)
-            ax.plot(r_grid, utils, color=C["p1"], lw=2.4, label="expected profit")
+            ax.plot(r_grid, utils, color=C["p1"], lw=2.4, label="expected profit ($)")
             ax.axvline(firm_true_cost, ls=":", lw=1.2, color=C["ne"],
                        label=f"truthful report r = c = {fmt_money(firm_true_cost)}")
-            ax.set_xlabel("Firm 1's reported cost r_1")
-            ax.set_ylabel(f"Expected profit (true cost = {fmt_money(firm_true_cost)})")
-            ax.set_title(title or f"{self.name}: truthful reporting maximises profit")
+            ax.scatter([r_grid[i_star]], [u_max], color=C["ne"], zorder=5, s=46,
+                       edgecolor="white", linewidths=0.8, label="profit-maximising report")
+            ax.annotate("truthful report\nmaximises profit",
+                        xy=(firm_true_cost, u_max), xycoords="data",
+                        xytext=(6, -2), textcoords="offset points",
+                        ha="left", va="top", fontsize=8.5, color=C["ne"],
+                        fontweight="bold",
+                        bbox=dict(boxstyle="round,pad=0.2", fc="white", ec="none",
+                                  alpha=0.75))
+            # Escape '$' so matplotlib does not enter mathtext between two dollars.
+            ax.set_xlabel(r"Firm 1's reported cost r_1 (\$)")
+            ax.set_ylabel(
+                f"Expected profit (true cost = {fmt_money(firm_true_cost)})".replace("$", r"\$"))
+            ax.set_title(title or
+                         f"{self.name}:\ntruthful reporting maximises profit")
             ax.legend(loc="best")
         return fig, ax
 
@@ -954,13 +1007,13 @@ class Procurement(Mechanism):
             import matplotlib.pyplot as plt
             fig, ax = plt.subplots(figsize=figsize)
             ax.plot(n_range, pay, color=C["p1"], lw=2.4, marker="o",
-                    label="E[payment to winner]")
+                    label="E[payment to winner] ($)")
             ax.plot(n_range, win_cost, color=C["p2"], lw=2.4, marker="s",
-                    label="E[winner's true cost]")
-            ax.fill_between(n_range, win_cost, pay, color=C["ne"], alpha=0.10,
+                    label="E[winner's true cost] ($)")
+            ax.fill_between(n_range, win_cost, pay, color=C["ne_light"],
                             label="winner's profit margin")
             ax.set_xlabel("Number of firms n")
-            ax.set_ylabel("Money")
+            ax.set_ylabel("Money ($)")
             ax.set_title(title or f"{self.name}: competition erodes the winner's rent")
             ax.legend(loc="best")
         return fig, ax
@@ -1074,7 +1127,9 @@ class EntryGame(Mechanism):
                         ax.axvline(q_star, ls=":", lw=0.9, color=clr, alpha=0.6)
                         ax.text(q_star, 0.05, f" q* = {fmt_prob(q_star)}",
                                 transform=ax.get_xaxis_transform(), ha="left",
-                                va="bottom", color=clr, fontweight="bold")
+                                va="bottom", color=clr, fontweight="bold",
+                                bbox=dict(boxstyle="round,pad=0.2", fc="white",
+                                          ec="none", alpha=0.75))
             ax.axhline(self.stay_out, ls="--", lw=1.0, color=C["muted"], alpha=0.8,
                        label=f"stay-out payoff = {fmt(self.stay_out)}")
             ax.set_xlabel("Pr(Strong incumbent), q")

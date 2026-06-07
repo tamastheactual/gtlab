@@ -29,7 +29,7 @@ from .core import (BayesianGame, CheapTalkGame, CorrelatedGame, EntryGame,
                    StochasticGame, VCGAssignment, ZeroSumGame)
 from .viz import apply_rc
 
-__version__ = "0.2.5"
+__version__ = "0.2.7"
 
 __all__ = [
     "NormalFormGame", "ZeroSumGame", "CorrelatedGame", "StochasticGame",

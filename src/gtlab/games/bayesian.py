@@ -56,8 +56,13 @@ def reverse_procurement(n_firms: int = 3) -> Procurement:
 
 
 def vcg_assignment() -> VCGAssignment:
-    """The VCG Assignment: two bidders, two items, unit demand."""
-    V = np.array([[10.0, 4.0], [6.0, 8.0]])
+    """The VCG Assignment: two bidders, two items, unit demand.
+
+    Both bidders rank Item A first, so the winner of A (Alice) pays the
+    externality she imposes on Bob, while Bob wins Item B uncontested and pays
+    nothing - a clean illustration of "pay the harm you cause the others".
+    """
+    V = np.array([[10.0, 2.0], [8.0, 3.0]])
     return VCGAssignment(V=V, bidders=["Alice", "Bob"], items=["Item A", "Item B"],
                          name="VCG assignment")
 

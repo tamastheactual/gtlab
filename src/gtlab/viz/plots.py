@@ -39,22 +39,35 @@ def ref_lines(ax, hlines=None, vlines=None) -> None:
 
     Each entry is either a number or a ``(value, label)`` tuple (matching the
     notebook ``hlines``/``vlines`` API); when a label is given it is annotated
-    next to the line.
+    next to the line, placed just inside the axes so it is never clipped.
     """
-    style = dict(ls=":", lw=1.0, color=C["muted"], alpha=0.8, zorder=1)
+    style = dict(ls=":", lw=1.2, color=C["text"], alpha=0.55, zorder=1)
+    lbl = dict(fontsize=8.5, color=C["text"], alpha=0.8, clip_on=False,
+               bbox=dict(boxstyle="round,pad=0.15", fc="white", ec="none", alpha=0.7))
     for item in (hlines or []):
         y, label = _ref_value_label(item)
         ax.axhline(y, **style)
         if label:
-            ax.annotate(label, xy=(0.01, y), xycoords=("axes fraction", "data"),
-                        va="bottom", ha="left", fontsize=8, color=C["muted"])
+            ax.annotate(label, xy=(0.012, y), xycoords=("axes fraction", "data"),
+                        va="bottom", ha="left", **lbl)
     for item in (vlines or []):
         x, label = _ref_value_label(item)
         ax.axvline(x, **style)
         if label:
-            ax.annotate(label, xy=(x, 0.99), xycoords=("data", "axes fraction"),
-                        va="top", ha="left", fontsize=8, color=C["muted"],
-                        rotation=90)
+            ax.annotate(label, xy=(x, 0.03), xycoords=("data", "axes fraction"),
+                        va="bottom", ha="left", rotation=90, **lbl)
+
+
+def legend_outside(ax, **kwargs):
+    """Place the legend just outside the axes (upper-left of the right margin).
+
+    The shared convention for 2-D map / imshow / region plots so the legend
+    never overlaps the data. ``savefig.bbox='tight'`` keeps it in the PNG.
+    """
+    opts = dict(loc="upper left", bbox_to_anchor=(1.02, 1.0), frameon=False,
+                fontsize=9)
+    opts.update(kwargs)
+    return ax.legend(**opts)
 
 
 def br_heatmap(
@@ -94,15 +107,19 @@ def br_heatmap(
                 if ne_mask[i, j]:
                     ax.text(j, i, "NE", ha="center", va="center",
                             color="white", fontweight="bold")
-        handles = [
-            Patch(facecolor=C["p1_light"], edgecolor=C["grid"],
-                  label=f"{row_player} best response"),
-            Patch(facecolor=C["p2_light"], edgecolor=C["grid"],
-                  label=f"{col_player} best response"),
-            Patch(facecolor=C["ne"], edgecolor=C["grid"], label="Nash equilibrium"),
+        # Only legend the categories that actually appear in this grid, so a
+        # game with (say) no row-only-best cells does not show a dangling swatch.
+        present = set(np.unique(grid).astype(int))
+        catalog = [
+            (1, C["p1_light"], f"{row_player} best response"),
+            (2, C["p2_light"], f"{col_player} best response"),
+            (3, C["ne"], "Nash equilibrium"),
         ]
-        ax.legend(handles=handles, loc="upper left", bbox_to_anchor=(1.02, 1.0),
-                  frameon=False, fontsize=9)
+        handles = [Patch(facecolor=col, edgecolor=C["grid"], label=lbl)
+                   for code, col, lbl in catalog if code in present]
+        if handles:
+            ax.legend(handles=handles, loc="upper left", bbox_to_anchor=(1.02, 1.0),
+                      frameon=False, fontsize=9)
         ax.set_title(title)
         ax.grid(False)
     return fig, ax
